@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blade Warrior - SP1 Verified Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Tambahkan efek retro overlay -->
+    <div class="retro-overlay"></div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="game-ui">
+            <div class="game-header">
+                <div class="game-stats">
+                    <div>SCORE: <span id="score-display">0</span></div>
+                    <div>WAVE: <span id="wave-display">1</span></div>
+                    <div>LIVES: <span id="lives-display">3</span></div>
+                </div>
+            </div>
+            
+            <!-- Start Screen -->
+            <div id="start-screen" class="game-title">
+                <h1>BLADE WARRIOR</h1>
+                <p class="start-instruction">CLICK TO START MISSION</p>
+                <button id="start-button" class="neon-button">START MISSION</button>
+            </div>
+            
+            <!-- Game Over Screen -->
+            <div id="game-over-screen" class="game-over" style="display: none;">
+                <h2>MISSION FAILED</h2>
+                <div class="game-over-stats">
+                    <p>FINAL SCORE: <span id="final-score">0</span></p>
+                    <p>WAVE REACHED: <span id="final-wave">1</span></p>
+                </div>
+                <div class="game-over-buttons">
+                    <button id="restart-button" class="neon-button">RESTART MISSION</button>
+                    <button id="submit-score-button" class="neon-button">VERIFY SCORE</button>
+                </div>
+            </div>
+            
+            <!-- Wave Notification -->
+            <div id="wave-notification" class="wave-notification" style="display: none;">
+                <h3>WAVE <span id="wave-number">1</span></h3>
+            </div>
+        </div>
+        
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <div class="arcade-buttons">
+                <button class="arcade-button button-share">SHARE</button>
+                <button class="arcade-button button-reset">RESET</button>
+                <button class="arcade-button button-prove">PROVE</button>
+                <button class="arcade-button button-info">INFO</button>
+                <button class="arcade-button button-stats">STATS</button>
+            </div>
+        </div>
+        
+        <!-- High Score Display -->
+        <div class="high-score-display">
+            <p>HIGH SCORE: <span id="high-score">0</span></p>
+        </div>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div id="game-over" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>MISSION FAILED</h2>
+            <p>FINAL SCORE: <span id="final-score">0</span></p>
+            <p>WAVE REACHED: <span id="final-wave">1</span></p>
+            <div class="input-group">
+                <label for="player-name">AGENT NAME:</label>
+                <input type="text" id="player-name" maxlength="15" placeholder="ENTER NAME">
+            </div>
+            <button id="restart-button" class="neon-button">RESTART MISSION</button>
+            <button id="submit-score-button" class="neon-button">VERIFY SCORE</button>
+        </div>
+    </div>
+    
+    <!-- Proof Log -->
+    <div id="proof-log" class="proof-log" style="display: none;">
+        <div class="proof-log-header">
+            <h3>SP1 ZERO-KNOWLEDGE PROOF LOG</h3>
+            <button id="close-log" class="close-button">X</button>
+        </div>
+        <div id="log-content" class="log-content"></div>
+    </div>
+    
+    <!-- Audio elements -->
+    <audio id="game-over-sound" src="assets/game-over.mp3" preload="auto"></audio>
+    <audio id="shoot-sound" src="assets/shoot.mp3" preload="auto"></audio>
+    <audio id="hit-sound" src="assets/hit.mp3" preload="auto"></audio>
+    <audio id="enemy-death-sound" src="assets/enemy-death.mp3" preload="auto"></audio>
+
+    <script src="js/game.js"></script>
+</body>
+</html>

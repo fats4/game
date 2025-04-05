@@ -1,0 +1,10 @@
+[package]
+name = "image_gen_program"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sp1-zkvm = "4.0.0"
+alloy-sol-types = "0.7.7"
+image_gen_lib = { path = "../lib" }
+serde = { version = "1.0", features = ["derive"] }

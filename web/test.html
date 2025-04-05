@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #351434;
+            color: white;
+        }
+        .test-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: #111827;
+            border-radius: 8px;
+        }
+        button {
+            background: #fe22be;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        img {
+            max-width: 100%;
+            border: 2px solid #81c8eb;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        pre {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Test Page</h1>
+    
+    <div class="test-container">
+        <h2>Test 1: Direct Image</h2>
+        <button id="test1">Load Test Image</button>
+        <div id="test1-result"></div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Test 2: Base64 Image</h2>
+        <button id="test2">Generate Base64 Image</button>
+        <div id="test2-result"></div>
+    </div>
+    
+    <script>
+        document.getElementById('test1').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const img = document.createElement('img');
+                img.src = '/api/test-image?' + new Date().getTime(); // Cache buster
+                img.onload = () => {
+                    resultDiv.innerHTML = '';
+                    resultDiv.appendChild(img);
+                    resultDiv.innerHTML += '<p>Image loaded successfully!</p>';
+                };
+                img.onerror = () => {
+                    resultDiv.innerHTML = '<p style="color:red">Failed to load image</p>';
+                };
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+            }
+        });
+        
+        document.getElementById('test2').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('test2-result');
+            resultDiv.innerHTML = 'Generating...';
+            
+            try {
+                const response = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: 'Test image',
+                        width: 512,
+                        height: 512
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to generate image');
+                }
+                
+                resultDiv.innerHTML = `
+                    <p>Response received:</p>
+                    <pre>${JSON.stringify({
+                        success: data.success,
+                        imageLength: data.image ? data.image.length : 0,
+                        proof: data.proof
+                    }, null, 2)}</pre>
+                    <p>Image:</p>
+                    <img src="data:image/png;base64,${data.image}" alt="Generated Image">
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html> 
