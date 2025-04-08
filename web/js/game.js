@@ -97,6 +97,29 @@ class BladeWarrior {
             }
         });
         
+        // Tambahkan properti mousePosition
+        this.mousePosition = {
+            x: this.width / 2,
+            y: this.height / 2
+        };
+        
+        // Add mouse event listeners
+        this.canvas.addEventListener('mousemove', (e) => {
+            // Get mouse position relative to canvas
+            const rect = this.canvas.getBoundingClientRect();
+            this.mousePosition = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        });
+        
+        this.canvas.addEventListener('mousedown', (e) => {
+            // Shoot when mouse is clicked
+            if (this.gameActive && e.button === 0) { // Left click
+                this.shoot();
+            }
+        });
+        
         // Start game loop
         this.gameLoop();
         
@@ -333,8 +356,12 @@ class BladeWarrior {
         this.player.x = Math.max(this.player.radius, Math.min(this.width - this.player.radius, this.player.x));
         this.player.y = Math.max(this.player.radius, Math.min(this.height - this.player.radius, this.player.y));
         
-        // Perbarui rotasi pedang
-        this.player.bladeRotation += this.player.bladeRotationSpeed;
+        // Ganti rotasi pedang otomatis dengan perhitungan berdasarkan posisi mouse
+        const angle = Math.atan2(
+            this.mousePosition.y - this.player.y,
+            this.mousePosition.x - this.player.x
+        );
+        this.player.bladeRotation = angle;
         
         // Efek kedip saat invulnerable
         if (this.player.invulnerable) {
@@ -369,11 +396,42 @@ class BladeWarrior {
             enemy.x += enemy.velocity.x;
             enemy.y += enemy.velocity.y;
             
+            // Check for blade collision first
+            if (this.checkBladeCollision(enemy)) {
+                // Player hit enemy with blade - add score!
+                this.score += 10;
+                
+                // Create particles for collision
+                this.createParticles(enemy.x, enemy.y, 20, enemy.color, 3, 2);
+                
+                // Remove enemy
+                this.enemies.splice(i, 1);
+                
+                // Update UI
+                this.updateUI();
+                
+                // Add game event
+                this.addGameEvent('enemy_killed', { position: { x: enemy.x, y: enemy.y }, score: this.score });
+                
+                // Skip the player collision check for this enemy since it's already removed
+                continue;
+            }
+            
             // Check for collision with player
             const dist = Math.hypot(this.player.x - enemy.x, this.player.y - enemy.y);
             if (dist - enemy.size - this.player.radius < 1) {
-                // Player hit by enemy
-                this.lives--;
+                // Only reduce lives if player is not invulnerable
+                if (!this.player.invulnerable) {
+                    this.lives--;
+                    this.player.invulnerable = true;
+                    this.player.invulnerableTime = 60; // Invulnerable for 60 frames
+                    
+                    // Add game event
+                    this.addGameEvent('player_hit', { lives: this.lives });
+                    
+                    // Shake the screen
+                    this.shakeCanvas(10, 300);
+                }
                 
                 // Create particles for collision
                 this.createParticles(enemy.x, enemy.y, 20, enemy.color, 3, 2);
@@ -386,33 +444,6 @@ class BladeWarrior {
                 
                 if (this.lives <= 0) {
                     this.gameOver();
-                }
-                
-                continue;
-            }
-            
-            // Check for collision with projectiles
-            for (let j = this.projectiles.length - 1; j >= 0; j--) {
-                const projectile = this.projectiles[j];
-                const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
-                
-                if (dist - enemy.size - projectile.size < 1) {
-                    // Enemy hit by projectile
-                    this.score += 10;
-                    
-                    // Create particles for explosion
-                    this.createParticles(enemy.x, enemy.y, 30, enemy.color, 3, 3);
-                    
-                    // Remove projectile
-                    this.projectiles.splice(j, 1);
-                    
-                    // Remove enemy
-                    this.enemies.splice(i, 1);
-                    
-                    // Update UI
-                    this.updateUI();
-                    
-                    break;
                 }
             }
         }
@@ -535,6 +566,16 @@ class BladeWarrior {
         this.drawGrid();
         
         if (this.gameActive) {
+            // Draw line from player to mouse (optional aim indicator)
+            if (this.mousePosition) {
+                this.ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.player.x, this.player.y);
+                this.ctx.lineTo(this.mousePosition.x, this.mousePosition.y);
+                this.ctx.stroke();
+            }
+            
             // Draw player dengan efek glow
             this.ctx.shadowColor = '#ff00ff';
             this.ctx.shadowBlur = 15;
@@ -1025,33 +1066,31 @@ class BladeWarrior {
         console.log('=== END DEBUG INFO ===');
     }
     
-    // Fix the blade collision detection method
+    // Tambahkan atau perbaiki metode checkBladeCollision
     checkBladeCollision(enemy) {
-        // Calculate blade position (at the tip of the blade)
-        const bladeX = this.player.x + Math.cos(this.player.bladeRotation) * this.player.bladeLength;
-        const bladeY = this.player.y + Math.sin(this.player.bladeRotation) * this.player.bladeLength;
+        // Hitung ujung pedang
+        const bladeEndX = this.player.x + Math.cos(this.player.bladeRotation) * this.player.bladeLength;
+        const bladeEndY = this.player.y + Math.sin(this.player.bladeRotation) * this.player.bladeLength;
         
-        // Calculate distance from blade tip to enemy center
-        const dx = enemy.x - bladeX;
-        const dy = enemy.y - bladeY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Periksa jarak enemy ke segmen garis pedang
+        // Gunakan cek jarak point ke line segment
+        const lineLength = Math.hypot(bladeEndX - this.player.x, bladeEndY - this.player.y);
         
-        // Check if enemy is within blade's reach
-        // We'll check along the entire length of the blade, not just the tip
-        for (let t = 0; t <= 1; t += 0.1) {
-            const checkX = this.player.x + Math.cos(this.player.bladeRotation) * (this.player.bladeLength * t);
-            const checkY = this.player.y + Math.sin(this.player.bladeRotation) * (this.player.bladeLength * t);
-            
-            const checkDx = enemy.x - checkX;
-            const checkDy = enemy.y - checkY;
-            const checkDistance = Math.sqrt(checkDx * checkDx + checkDy * checkDy);
-            
-            if (checkDistance < enemy.radius + this.player.bladeWidth / 2) {
-                return true;
-            }
-        }
+        // Projection of enemy position onto blade line
+        const t = Math.max(0, Math.min(1, 
+                    ((enemy.x - this.player.x) * (bladeEndX - this.player.x) + 
+                     (enemy.y - this.player.y) * (bladeEndY - this.player.y)) / 
+                     (lineLength * lineLength)));
         
-        return false;
+        // Titik terdekat pada pedang ke musuh
+        const projectionX = this.player.x + t * (bladeEndX - this.player.x);
+        const projectionY = this.player.y + t * (bladeEndY - this.player.y);
+        
+        // Jarak antara musuh dan titik terdekat pada pedang
+        const distance = Math.hypot(enemy.x - projectionX, enemy.y - projectionY);
+        
+        // Tumbukan terjadi jika jaraknya kurang dari radius musuh + lebar pedang/2
+        return distance < enemy.size + this.player.bladeWidth;
     }
     
     // Fix the player position update method
@@ -1362,6 +1401,38 @@ class BladeWarrior {
                 this.particles.splice(i, 1);
             }
         }
+    }
+
+    // Perbarui metode shoot() untuk menembak ke arah kursor
+    shoot() {
+        if (!this.gameActive) return;
+        
+        // Calculate direction based on mouse position
+        const angle = Math.atan2(
+            this.mousePosition.y - this.player.y,
+            this.mousePosition.x - this.player.x
+        );
+        
+        // Calculate velocity based on angle
+        const velocity = {
+            x: Math.cos(angle) * 10,
+            y: Math.sin(angle) * 10
+        };
+        
+        // Create projectile
+        this.projectiles.push({
+            x: this.player.x,
+            y: this.player.y,
+            size: 5,
+            color: '#00ffff',
+            velocity: velocity
+        });
+        
+        // Add game event
+        this.addGameEvent('shoot', { position: { x: this.player.x, y: this.player.y }, angle });
+        
+        // Create particles for visual effect
+        this.createParticles(this.player.x, this.player.y, 5, '#00ffff', 1, 1);
     }
 }
 
