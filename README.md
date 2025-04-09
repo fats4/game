@@ -27,8 +27,8 @@ Before you begin, make sure you have the following installed:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/blade-warrior.git
-   cd blade-warrior
+   git clone https://github.com/fats4/game.git
+   cd game
    ```
 
 2. Set up the backend:
