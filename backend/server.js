@@ -22,11 +22,8 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 // Serve static files from the web directory
 app.use(express.static(path.join(__dirname, '../web')));
 
-// Menyimpan koneksi SSE yang aktif
 const clients = new Map();
 
-// Konfigurasi lokasi file yang sudah dikompilasi - dengan path yang fleksibel
-// Cari di beberapa lokasi potensial
 const ROOT_DIR = path.resolve(__dirname, '..');
 const POSSIBLE_COMPILED_DIRS = [
     path.join(ROOT_DIR, 'target/release'),
@@ -35,7 +32,6 @@ const POSSIBLE_COMPILED_DIRS = [
     path.join(ROOT_DIR, 'bin')
 ];
 
-// Pilih direktori yang ada
 let COMPILED_DIR = null;
 for (const dir of POSSIBLE_COMPILED_DIRS) {
     if (fs.existsSync(dir)) {
@@ -50,10 +46,8 @@ if (!COMPILED_DIR) {
     COMPILED_DIR = ROOT_DIR;
 }
 
-// Ubah konfigurasi direktori proof
 const PROOF_OUTPUT_DIR = path.join(ROOT_DIR, 'proofs');
 
-// Pastikan direktori proofs ada
 try {
     if (!fs.existsSync(PROOF_OUTPUT_DIR)) {
         fs.mkdirSync(PROOF_OUTPUT_DIR, { recursive: true });
@@ -110,33 +104,25 @@ app.post('/api/verify', async (req, res) => {
         
         console.log(`Verifying score for player ${playerName}: ${score} points`);
         
-        // Buat ID unik untuk verifikasi ini
         const verificationId = `${playerName}-${timestamp}`;
         
-        // Buat nama file untuk proof
         const proofFileName = `${playerName.replace(/[^a-z0-9]/gi, '_')}_${score}_${Date.now()}.bin`;
         const proofFilePath = path.join(PROOF_OUTPUT_DIR, proofFileName);
         
-        // Kirim respons awal ke client
         res.json({
             success: true,
             message: "Verification process started",
             verificationId,
-            proofFile: proofFileName // Tambahkan nama file ke respons
+            proofFile: proofFileName 
         });
         
-        // Buat file kosong sebagai placeholder (akan diisi oleh proses proving)
         fs.writeFileSync(proofFilePath, Buffer.alloc(0));
         console.log(`Empty proof file created at: ${proofFilePath}`);
 
-        // Jalankan proses verifikasi di background dengan path file proof
         runVerification(playerName, score, timestamp, gameHash, verificationId, proofFilePath);
-        
-        // PENTING: Tidak mengirim respons lagi di sini
             
     } catch (error) {
         console.error("Server error:", error);
-        // Hanya kirim respons error jika belum ada respons yang dikirim
         if (!res.headersSent) {
             res.status(500).json({
                 success: false,
@@ -148,23 +134,18 @@ app.post('/api/verify', async (req, res) => {
     }
 });
 
-// Endpoint untuk Server-Sent Events (SSE)
 app.get('/api/verify/log', (req, res) => {
-    // Ambil parameter dari query
     const { playerName, score, timestamp } = req.query;
     const verificationId = `${playerName}-${timestamp}`;
     
     console.log(`Client connected to log stream for verification ID: ${verificationId}`);
     
-    // Siapkan header untuk SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    // Kirim event untuk check koneksi
-    res.write(`data: ${JSON.stringify({ connected: true, log: "Terhubung ke server..." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ connected: true, log: "Connected to the server..." })}\n\n`);
     
-    // Simpan koneksi dalam clients map
     clients.set(verificationId, res);
     
     // Handle client disconnection
@@ -174,19 +155,15 @@ app.get('/api/verify/log', (req, res) => {
     });
 });
 
-// Fungsi untuk membersihkan string output
 function cleanOutputString(str) {
-    // Hapus prefiks stdout: dan stderr: dengan lebih agresif
-    // Gunakan regex yang lebih kuat untuk mencocokkan berbagai format
-    return str.replace(/^stdout:\s*/gm, '')     // Hapus di awal baris
-              .replace(/^stderr:\s*/gm, '')     // Hapus di awal baris
-              .replace(/\s+stdout:\s*/gm, ' ')  // Hapus di tengah baris
-              .replace(/\s+stderr:\s*/gm, ' '); // Hapus di tengah baris
+    return str.replace(/^stdout:\s*/gm, '')     
+              .replace(/^stderr:\s*/gm, '')     
+              .replace(/\s+stdout:\s*/gm, ' ')  
+              .replace(/\s+stderr:\s*/gm, ' '); 
 }
 
-// Fungsi untuk menjalankan proses verifikasi
 function runVerification(playerName, score, timestamp, gameHash, verificationId, proofFilePath) {
-    // Fungsi untuk mengirim update ke client
+    // Function to send updates to client
     const sendUpdate = (data) => {
         const client = clients.get(verificationId);
         if (client) {
@@ -194,19 +171,19 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
         }
     };
     
-    // Cari executable prove
+    // Find prove executable
     const proveScript = findExecutable('prove', 'cargo run --bin prove --');
     
-    // Jika tidak ditemukan, gunakan simulasi
+    // If not found, use simulation
     if (!proveScript && process.env.SIMULATION_MODE !== 'true') {
         console.log("Prover executable not found, falling back to simulation mode");
         process.env.SIMULATION_MODE = 'true';
     }
     
-    // Update progress awal
-    sendUpdate({ log: "Memulai proses verifikasi...", progress: 5 });
+    // Initial progress update
+    sendUpdate({ log: "Starting verification process...", progress: 5 });
     
-    // Mode simulasi untuk testing
+    // Simulation mode for testing
     const SIMULATION_MODE = process.env.SIMULATION_MODE === 'true';
     
     if (SIMULATION_MODE) {
@@ -215,13 +192,13 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
     } else {
         console.log("Running real verification using SP1 prover");
         
-        // Konversi game hash dari hex ke bytes jika perlu
+        // Convert game hash from hex to bytes if needed
         let gameHashArg = gameHash;
         if (gameHash.length === 64 && /^[0-9a-f]+$/i.test(gameHash)) {
-            gameHashArg = gameHash; // Sudah dalam format hex
+            gameHashArg = gameHash; // Already in hex format
         }
         
-        // Persiapkan command untuk prover
+        // Prepare command for prover
         const args = [
             '--prove',
             '--timestamp', timestamp.toString(),
@@ -233,14 +210,13 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
         // Log command
         console.log(`Running command: ${proveScript} ${args.join(' ')}`);
         
-        // PERBAIKAN: Ganti nama variabel 'process' ke 'childProcess' untuk menghindari konflik
+        // Create child process
         let childProcess;
         if (proveScript.includes('cargo run')) {
-            // Jika menggunakan cargo run
             childProcess = spawn('cargo', ['run', '--bin', 'prove', '--', ...args], {
                 cwd: path.join(ROOT_DIR, 'script'),
                 env: {
-                    ...process.env, // Sekarang mengacu ke Node.js process
+                    ...process.env, 
                     RUST_BACKTRACE: '1',
                     RUST_LOG: 'info' 
                 },
@@ -248,11 +224,10 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
                 windowsHide: true
             });
         } else {
-            // Jika menggunakan executable langsung
             childProcess = spawn(proveScript, args, {
                 cwd: COMPILED_DIR,
                 env: {
-                    ...process.env, // Sekarang mengacu ke Node.js process
+                    ...process.env, 
                     RUST_BACKTRACE: '1',
                     RUST_LOG: 'info' 
                 },
@@ -264,68 +239,62 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
         let output = '';
         let errorOutput = '';
         
-        // Update awal
-        sendUpdate({ log: "Memulai SP1 Zero-Knowledge Prover...", progress: 10 });
+        // Initial update
+        sendUpdate({ log: "Starting SP1 Zero-Knowledge Prover...", progress: 10 });
         
-        // PERBAIKAN: Gunakan childProcess bukan process untuk stdout/stderr listeners
+        // Fix: Use childProcess instead of process for stdout/stderr listeners
         childProcess.stdout.on('data', (data) => {
-            // Bersihkan format output
+            // Clean output format
             const rawDataStr = data.toString().trim();
             const dataStr = cleanOutputString(rawDataStr);
             
-            // Tambahkan ke output kumulatif
             output += dataStr + "\n";
             
-            // Inisialisasi variabel progressValue
             let progressValue = 10; // Default
             
-            // Deteksi apakah ini pesan error yang sebenarnya
             const isRealError = dataStr.includes('Error:') || 
                                dataStr.includes('Failed to') || 
                                dataStr.includes('exception');
             
-            // Log pesan tanpa prefiks yang mengganggu
             if (isRealError) {
                 console.error(dataStr);
             } else {
                 console.log(dataStr);
             }
             
-            // Kirim ke client - hanya pesan yang sudah dibersihkan
             sendUpdate({ log: dataStr, progress: progressValue });
             
-            // Deteksi progress dari output
             if (dataStr.includes('GENERATING KEYS')) {
                 progressValue = 20;
-                sendUpdate({ log: "Menghasilkan proving keys...", progress: progressValue });
+                sendUpdate({ log: "Generating proving keys...", progress: progressValue });
             } else if (dataStr.includes('PROVING AND VERIFICATION KEYS GENERATED')) {
                 progressValue = 40;
-                sendUpdate({ log: "Keys berhasil dibuat!", progress: progressValue });
+                sendUpdate({ log: "Keys created!", progress: progressValue });
             } else if (dataStr.includes('GENERATING PROOF')) {
                 progressValue = 50;
-                sendUpdate({ log: "Membangun Zero-Knowledge proof...", progress: progressValue });
+                sendUpdate({ log: "Building Zero-Knowledge proof...", progress: progressValue });
             } else if (dataStr.includes('ZERO-KNOWLEDGE PROOF GENERATED')) {
                 progressValue = 80;
-                sendUpdate({ log: "Zero-Knowledge proof berhasil dibuat!", progress: progressValue });
+                sendUpdate({ log: "Zero-Knowledge proof created!", progress: progressValue });
             } else if (dataStr.includes('VERIFYING PROOF')) {
                 progressValue = 85;
-                sendUpdate({ log: "Verifikasi proof...", progress: progressValue });
+                sendUpdate({ log: "Verification proof...", progress: progressValue });
             } else if (dataStr.includes('PROOF VERIFIED SUCCESSFULLY')) {
                 progressValue = 95;
-                sendUpdate({ log: "Proof berhasil diverifikasi!", progress: progressValue });
+                sendUpdate({ log: "Proof has been verified!", progress: progressValue });
             } else if (dataStr.includes('VERIFICATION_SUCCESS=true')) {
                 progressValue = 100;
                 sendUpdate({ 
-                    log: "🎉 Verifikasi skor ZK berhasil! 🎉", 
+                    log: "🎉 Verification of Game Score ZK Success! 🎉", 
                     progress: 100,
                     completed: true,
                 success: true,
-                    proofFile: path.basename(proofFilePath) // Tambahkan info file
+                    proofFile: path.basename(proofFilePath) 
                 });
             } else if (dataStr.includes('Proof saved to')) {
                 const match = dataStr.match(/Proof saved to: (.*)/);
                 if (match && match[1]) {
-                    sendUpdate({ log: `Proof disimpan ke: ${match[1]}`, progress: progressValue });
+                    sendUpdate({ log: `Proof send to: ${match[1]}`, progress: progressValue });
                 }
             }
         });
@@ -333,14 +302,11 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
         childProcess.stderr.on('data', (data) => {
             const rawErrorStr = data.toString().trim();
             const errorStr = cleanOutputString(rawErrorStr);
-            
-            // Tambahkan ke error output kumulatif
+
             errorOutput += errorStr + "\n";
             
-            // Inisialisasi progressValue
-            let progressValue = 10; // Default untuk pesan error
+            let progressValue = 10; 
             
-            // Periksa jika pesan ini sebenarnya stdout yang terkirim melalui stderr
             if (errorStr.includes('Game Score Verification:') || 
                 errorStr.includes('Timestamp:') || 
                 errorStr.includes('Player:') || 
@@ -348,16 +314,12 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
                 errorStr.includes('Verification Result:') ||
                 errorStr.includes('Valid:')) {
                 
-                // Ini output normal, tampilkan tanpa prefiks error
                 console.log(errorStr);
                 
-                // Kirim ke client sebagai log normal
                 sendUpdate({ log: errorStr, progress: progressValue });
             } else {
-                // Ini error asli
                 console.error(errorStr);
                 
-                // Kirim ke client sebagai error
                 sendUpdate({ log: `Error: ${errorStr}`, progress: progressValue });
             }
         });
@@ -368,15 +330,14 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
             if (code !== 0) {
                 console.error('Verification failed');
                 sendUpdate({ 
-                    log: `Verifikasi gagal dengan kode error: ${code}`, 
+                    log: `Verification failed send code error: ${code}`, 
                     progress: 100,
                     completed: true,
                     success: false
                 });
             } else if (!output.includes('VERIFICATION_SUCCESS=true')) {
-                // Jika tidak ada konfirmasi sukses
                 sendUpdate({ 
-                    log: "Verifikasi selesai tanpa konfirmasi sukses", 
+                    log: "Verification success", 
                     progress: 100,
                     completed: true,
                     success: true
@@ -386,9 +347,7 @@ function runVerification(playerName, score, timestamp, gameHash, verificationId,
     }
 }
 
-// Fungsi untuk mencari executable
 function findExecutable(name, fallback) {
-    // Cari di direktori yang sudah dikonfigurasi
     const extensions = process.platform === 'win32' ? ['.exe', '.cmd', '.bat', ''] : [''];
     
     for (const ext of extensions) {
@@ -398,7 +357,6 @@ function findExecutable(name, fallback) {
         }
     }
     
-    // Jika tidak ditemukan di COMPILED_DIR, coba cari di PATH sistem
     const pathEnv = process.env.PATH || '';
     const pathDirs = pathEnv.split(path.delimiter);
     
@@ -411,20 +369,17 @@ function findExecutable(name, fallback) {
         }
     }
     
-    // Jika tidak ditemukan, gunakan fallback
     return fallback;
 }
 
-// Simulasi verifikasi untuk testing
 function simulateVerification(sendUpdate, playerName, score) {
-    // Simulasi tahapan proving
     const steps = [
-        { log: "Inisialisasi SP1 ZK Prover...", progress: 10, delay: 800 },
-        { log: "Menyiapkan program RISC-V...", progress: 20, delay: 1000 },
-        { log: "Memulai eksekusi program dalam ZK circuit...", progress: 30, delay: 1200 },
-        { log: "Verifikasi data input game...", progress: 40, delay: 800 },
-        { log: `Memproses skor ${score} untuk pemain ${playerName}...`, progress: 50, delay: 1200 },
-        { log: "Menerapkan batasan ZK circuit...", progress: 60, delay: 1500 },
+        { log: "SP1 ZK Prover...", progress: 10, delay: 800 },
+        { log: "Preparing program RISC-V...", progress: 20, delay: 1000 },
+        { log: "Starting program execution in ZK circuit...", progress: 30, delay: 1200 },
+        { log: "Verifying game data input...", progress: 40, delay: 800 },
+        { log: `Processing score ${score} for player ${playerName}...`, progress: 50, delay: 1200 },
+        { log: "Applying ZK circuit constraints...", progress: 60, delay: 1500 },
         { log: "Generating proof witnesses...", progress: 70, delay: 1500 },
         { log: "Constructing ZK proof...", progress: 80, delay: 2000 },
         { log: "Verifying proof validity...", progress: 90, delay: 1000 },
@@ -432,7 +387,6 @@ function simulateVerification(sendUpdate, playerName, score) {
         { log: "Proof generation completed successfully!", progress: 100, delay: 500, completed: true, success: true }
     ];
     
-    // Jalankan simulasi secara berurutan dengan delay
     let currentStep = 0;
     
     function processNextStep() {
@@ -445,11 +399,9 @@ function simulateVerification(sendUpdate, playerName, score) {
         }
     }
     
-    // Mulai simulasi
     processNextStep();
 }
 
-// Get proof list endpoint
 app.get('/api/proofs', (req, res) => {
     try {
         const proofFiles = fs.readdirSync(PROOF_OUTPUT_DIR)
@@ -462,10 +414,10 @@ app.get('/api/proofs', (req, res) => {
                     size: stats.size
                 };
             })
-            .sort((a, b) => b.created - a.created); // Urutkan terbaru dulu
+            .sort((a, b) => b.created - a.created); 
         
         res.json({
-            success: true,
+                    success: true,
             proofs: proofFiles
         });
     } catch (error) {
@@ -477,7 +429,6 @@ app.get('/api/proofs', (req, res) => {
     }
 });
 
-// Start the server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Blade Warrior Game Verification Server running at http://localhost:${PORT}`);
     console.log(`Simulation Mode: ${process.env.SIMULATION_MODE === 'true' ? 'ENABLED' : 'DISABLED'}`);

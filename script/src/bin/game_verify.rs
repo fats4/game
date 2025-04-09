@@ -1,4 +1,3 @@
-// Hapus import std::env yang tidak digunakan
 use game_verification_script::verify_game_score;
 use clap::Parser;
 
@@ -28,12 +27,11 @@ fn main() {
     // Parse command line arguments
     let args = Args::parse();
     
-    // Tampilkan header dengan tema pink
+    // Display header with pink theme
     println!("\x1b[38;5;213m========================================\x1b[0m");
     println!("\x1b[38;5;213m    SP1 BLADE WARRIOR VERIFICATION     \x1b[0m");
     println!("\x1b[38;5;213m========================================\x1b[0m");
     
-    // Verify the game score menggunakan SP1
     let result = verify_game_score(
         args.timestamp,
         &args.player,
@@ -45,13 +43,11 @@ fn main() {
         println!("\x1b[38;5;213m========================================\x1b[0m");
         println!("\x1b[38;5;213m    VERIFICATION RESULT: \x1b[38;5;46mSUCCESS    \x1b[0m");
         println!("\x1b[38;5;213m========================================\x1b[0m");
-        // Tambahkan string khusus untuk deteksi keberhasilan
         println!("VERIFICATION_SUCCESS=true");
     } else {
         println!("\x1b[38;5;213m========================================\x1b[0m");
         println!("\x1b[38;5;213m    VERIFICATION RESULT: \x1b[38;5;197mFAILED     \x1b[0m");
         println!("\x1b[38;5;213m========================================\x1b[0m");
-        // Tambahkan string khusus untuk deteksi kegagalan
         println!("VERIFICATION_SUCCESS=false");
     }
     

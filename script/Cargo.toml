@@ -3,11 +3,6 @@ name = "game_verification_script"
 version = "0.1.0"
 edition = "2021"
 
-# Hapus atau komentari baris berikut jika ada
-# [[bin]]
-# name = "image_gen_script"
-# path = "src/main.rs"
-
 [[bin]]
 name = "prove"
 path = "src/bin/prove.rs"

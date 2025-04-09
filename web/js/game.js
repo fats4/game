@@ -42,13 +42,13 @@ class BladeWarrior {
             invulnerableTime: 0
         };
         
-        // Preload karakter Succinct jika ada
+        // Preload Succinct character if available
         this.playerImage = new Image();
-        this.playerImage.src = 'assets/succinct-character.png'; // Gambar karakter Succinct
+        this.playerImage.src = 'assets/succinct-character.png'; // Succinct character image
         
-        // Preload topi biru jika ada
+        // Preload blue hat if available
         this.hatImage = new Image();
-        this.hatImage.src = 'assets/succinct-hat.png'; // Gambar topi biru
+        this.hatImage.src = 'assets/succinct-hat.png'; // Blue hat image
         
         // Enemies
         this.enemies = [];
@@ -60,10 +60,10 @@ class BladeWarrior {
         // Particles
         this.particles = [];
         
-        // Input handling - perbarui untuk mencegah scrolling
+        // Input handling - update to prevent scrolling
         this.keys = {};
         
-        // UI elements - dengan penanganan error yang lebih baik
+        // UI elements - with better error handling
         this.initializeUIElements();
         
         // Load high score
@@ -118,14 +118,14 @@ class BladeWarrior {
         
         console.log('Game initialized!');
         
-        // Inisialisasi game state global
+        // Initialize global game state
         window.gameState = window.gameState || {
             finalScore: 0,
             finalWave: 1,
             playerName: '',
             gameActive: false,
             
-            // Metode untuk mengupdate state
+            // Method to update state
             updateState: function(properties) {
                 for (const key in properties) {
                     if (this.hasOwnProperty(key)) {
@@ -135,7 +135,7 @@ class BladeWarrior {
             },
             
             generateGameHash: function(playerName, score) {
-                // Implementasi dari gameState.js
+                // Implementation from gameState.js
                 const timestamp = Math.floor(Date.now() / 1000);
                 const input = `${playerName}-${score}-${timestamp}`;
                 let hash = '';
@@ -149,19 +149,19 @@ class BladeWarrior {
             }
         };
         
-        // PENTING: Tetapkan constant untuk base speed
+        // IMPORTANT: Set constant for base speed
         this.DEFAULT_ENEMY_SPEED = 2.0;
         this.DEFAULT_ENEMY_SPAWN_RATE = 60;
         
-        // Inisialisasi variabel speed
+        // Initialize speed variables
         this.baseEnemySpeed = this.DEFAULT_ENEMY_SPEED;
         this.enemySpeedMultiplier = 1.0;
         this.enemySpawnRate = this.DEFAULT_ENEMY_SPAWN_RATE;
     }
     
-    // Metode baru untuk menginisialisasi UI elements dengan penanganan error
+    // New method to initialize UI elements with error handling
     initializeUIElements() {
-        // Dapatkan semua elemen UI yang diperlukan
+        // Get all required UI elements
         const uiElements = {
             startButton: document.getElementById('start-button'),
             startScreen: document.getElementById('start-screen'),
@@ -174,10 +174,10 @@ class BladeWarrior {
             waveNotification: document.getElementById('wave-notification')
         };
         
-        // Log elemen UI yang ditemukan/tidak ditemukan
+        // Log found/missing UI elements
         console.log('UI elements:', uiElements);
         
-        // Periksa elemen yang tidak ditemukan
+        // Check for missing elements
         const missingElements = Object.entries(uiElements)
             .filter(([_, element]) => !element)
             .map(([name]) => name);
@@ -186,7 +186,7 @@ class BladeWarrior {
             console.warn('Some UI elements not found!', missingElements);
         }
         
-        // Simpan referensi ke elemen UI
+        // Save reference to UI elements
         this.startButton = uiElements.startButton;
         this.startScreen = uiElements.startScreen;
         this.gameOverScreen = uiElements.gameOverScreen;
@@ -197,11 +197,11 @@ class BladeWarrior {
         this.highScoreElement = uiElements.highScoreElement;
         this.waveNotification = uiElements.waveNotification;
         
-        // Setup event listeners untuk UI
+        // Setup event listeners for UI
         this.setupUIEventListeners();
     }
     
-    // Metode baru untuk setup event listeners dengan penanganan error
+    // New method to setup event listeners with error handling
     setupUIEventListeners() {
         // Start button
         if (this.startButton) {
@@ -210,21 +210,21 @@ class BladeWarrior {
             });
         }
         
-        // Restart button dalam game over screen
+        // Restart button in game over screen
         if (this.restartButton) {
             this.restartButton.addEventListener('click', () => {
                 this.restartGame();
             });
         }
         
-        // Submit score button dalam game over screen
+        // Submit score button in game over screen
         if (this.submitScoreButton) {
             this.submitScoreButton.addEventListener('click', () => {
                 this.verifyScore();
             });
         }
         
-        // Restart button dalam modal
+        // Restart button in modal
         const modalRestartButton = document.querySelector('#game-over #restart-button');
         if (modalRestartButton) {
             modalRestartButton.addEventListener('click', () => {
@@ -232,7 +232,7 @@ class BladeWarrior {
             });
         }
         
-        // Submit score button dalam modal
+        // Submit score button in modal
         const modalSubmitButton = document.querySelector('#game-over #submit-score-button');
         if (modalSubmitButton) {
             modalSubmitButton.addEventListener('click', () => {
@@ -288,23 +288,23 @@ class BladeWarrior {
             });
         }
 
-        // Bind verify score button dengan menghindari restart game
+        // Bind verify score button with avoiding restart game
         const verifyButton = document.getElementById('verify-button');
         if (verifyButton) {
-            // Hapus event listener yang sudah ada
+            // Remove existing event listener
             const newVerifyButton = verifyButton.cloneNode(true);
             verifyButton.parentNode.replaceChild(newVerifyButton, verifyButton);
             
-            // Tambahkan event listener baru dengan explicit preventDefault
+            // Add new event listener with explicit preventDefault
             newVerifyButton.addEventListener('click', (e) => {
                 console.log('Verify button clicked, preventing default action');
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Panggil fungsi verifikasi
+                // Call verify score function
                 this.verifyScore();
                 
-                // Untuk memastikan, tambahkan return false
+                // To ensure, add return false
                 return false;
             });
         }
@@ -409,14 +409,14 @@ class BladeWarrior {
         this.player.x = Math.max(this.player.radius, Math.min(this.width - this.player.radius, this.player.x));
         this.player.y = Math.max(this.player.radius, Math.min(this.height - this.player.radius, this.player.y));
         
-        // Ganti rotasi pedang otomatis dengan perhitungan berdasarkan posisi mouse
+        // Replace automatic blade rotation with calculation based on mouse position
         const angle = Math.atan2(
             this.mousePosition.y - this.player.y,
             this.mousePosition.x - this.player.x
         );
         this.player.bladeRotation = angle;
         
-        // Efek kedip saat invulnerable
+        // Blink effect when invulnerable
         if (this.player.invulnerable) {
             this.player.invulnerableTime--;
             if (this.player.invulnerableTime <= 0) {
@@ -428,29 +428,29 @@ class BladeWarrior {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             
-            // Hitung arah menuju player (vektor dari musuh ke player)
+            // Calculate direction towards player (vector from enemy to player)
             const dx = this.player.x - enemy.x;
             const dy = this.player.y - enemy.y;
             
-            // Normalisasi vektor (ubah menjadi vektor satuan)
+            // Normalize vector (change to unit vector)
             const distance = Math.sqrt(dx * dx + dy * dy);
             const ndx = dx / distance;
             const ndy = dy / distance;
             
-            // Perbarui posisi musuh berdasarkan arah ke pemain
+            // Update enemy position based on direction towards player
             const baseSpeed = enemy.speed || (enemy.velocity ? Math.abs(enemy.velocity.y) : this.baseEnemySpeed);
             
-            // Update posisi musuh untuk mengejar pemain
+            // Update enemy position to chase player
             enemy.x += ndx * baseSpeed;
             enemy.y += ndy * baseSpeed;
             
-            // Update velocity object untuk kompatibilitas
+            // Update velocity object for compatibility
             if (enemy.velocity) {
                 enemy.velocity.x = ndx * baseSpeed;
                 enemy.velocity.y = ndy * baseSpeed;
             }
             
-            // Musuh keluar dari layar?
+            // Enemy out of screen?
             if (enemy.x < -50 || enemy.x > this.width + 50 || 
                 enemy.y < -50 || enemy.y > this.height + 50) {
                 this.enemies.splice(i, 1);
@@ -526,53 +526,53 @@ class BladeWarrior {
         
         console.log(`Spawning enemies for wave ${this.wave}`);
         
-        // Hitung jumlah musuh berdasarkan wave
+        // Calculate number of enemies based on wave
         const numEnemies = Math.min(3 + this.wave, 15);
         
-        // Kalkulasi kecepatan untuk wave ini
+        // Calculate speed for this wave
         this.enemySpeedMultiplier = Math.min(1.0 + (this.wave * 0.1), 2.5);
         
         console.log(`Wave ${this.wave}: Speed multiplier = ${this.enemySpeedMultiplier.toFixed(2)}`);
         
-        // Spawn musuh dengan posisi random di luar layar
+        // Spawn enemies with random position outside screen
         for (let i = 0; i < numEnemies; i++) {
-            // Tentukan posisi spawn secara random (luar layar)
+            // Determine random spawn position (outside screen)
             let x, y;
             const side = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
             
             switch (side) {
-                case 0: // Atas
+                case 0: // Top
                     x = Math.random() * this.width;
                     y = -50;
                     break;
-                case 1: // Kanan
+                case 1: // Right
                     x = this.width + 50;
                     y = Math.random() * this.height;
                     break;
-                case 2: // Bawah
+                case 2: // Bottom
                     x = Math.random() * this.width;
                     y = this.height + 50;
                     break;
-                case 3: // Kiri
+                case 3: // Left
                     x = -50;
                     y = Math.random() * this.height;
                     break;
             }
             
-            // Kecepatan dasar yang konsisten
+            // Consistent base speed
             const speed = (this.baseEnemySpeed + Math.random() * 0.5) * this.enemySpeedMultiplier;
             
-            // Buat objek musuh dengan format lengkap
+            // Create enemy object with full format
             this.enemies.push({
                 x: x,
                 y: y,
                 radius: 20,
-                size: 20, // Untuk kompatibilitas
+                size: 20, // For compatibility
                 color: this.getRandomEnemyColor(),
                 speed: speed,
                 velocity: {
-                    x: 0, // Placeholder, akan diupdate di update()
-                    y: 0  // Placeholder, akan diupdate di update()
+                    x: 0, // Placeholder, will be updated in update()
+                    y: 0  // Placeholder, will be updated in update()
                 }
             });
         }
@@ -590,7 +590,7 @@ class BladeWarrior {
         // Update UI
         document.getElementById('wave-display').textContent = this.wave;
         
-        // Tampilkan notifikasi wave
+        // Show wave notification
         const waveNotification = document.getElementById('wave-notification');
         const waveNumber = document.getElementById('wave-number');
         
@@ -598,13 +598,13 @@ class BladeWarrior {
             waveNumber.textContent = this.wave;
             waveNotification.style.display = 'block';
             
-            // Sembunyikan notifikasi setelah beberapa detik
+            // Hide notification after a few seconds
             setTimeout(() => {
                 waveNotification.style.display = 'none';
             }, 2000);
         }
         
-        // Spawn musuh untuk wave baru
+        // Spawn enemies for new wave
         this.spawnEnemies();
         
         // Debug log
@@ -615,7 +615,7 @@ class BladeWarrior {
         console.log('Game over!');
         this.gameActive = false;
         
-        // Simpan skor akhir ke variabel instance
+        // Save final score to instance variable
         this.finalScore = this.score;
         this.finalWave = this.wave;
         
@@ -637,17 +637,17 @@ class BladeWarrior {
             el.textContent = this.finalWave;
         });
         
-        // Tampilkan game over screen
+        // Show game over screen
         if (this.gameOverScreen) {
             this.gameOverScreen.style.display = 'block';
         }
         
-        // Mainkan sound effect game over
+        // Play game over sound effect
         if (this.gameOverSound) {
             this.gameOverSound.play();
         }
         
-        // Tampilkan game over modal
+        // Show game over modal
         const gameOverModal = document.getElementById('game-over');
         if (gameOverModal) {
             gameOverModal.style.display = 'flex';
@@ -673,7 +673,7 @@ class BladeWarrior {
                 this.ctx.stroke();
             }
             
-            // Draw player dengan efek glow
+            // Draw player with glow effect
             this.ctx.shadowColor = '#ff00ff';
             this.ctx.shadowBlur = 15;
             this.ctx.fillStyle = this.player.color;
@@ -681,13 +681,13 @@ class BladeWarrior {
             this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Gambar pedang
+            // Draw blade
             this.drawBlade();
             
             // Reset shadow
             this.ctx.shadowBlur = 0;
             
-            // Draw enemies dengan efek glow
+            // Draw enemies with glow effect
             this.enemies.forEach(enemy => {
                 this.ctx.shadowColor = enemy.color;
                 this.ctx.shadowBlur = 10;
@@ -729,30 +729,30 @@ class BladeWarrior {
         }
     }
     
-    // Metode untuk menggambar pedang
+    // Method to draw blade
     drawBlade() {
-        // Simpan state context
+        // Save context state
         this.ctx.save();
         
-        // Translasi ke posisi player
+        // Translate to player position
         this.ctx.translate(this.player.x, this.player.y);
         
-        // Rotasi pedang
+        // Rotate blade
         this.ctx.rotate(this.player.bladeRotation);
         
-        // Efek glow untuk pedang
+        // Blade glow effect
         this.ctx.shadowColor = '#00ffff';
         this.ctx.shadowBlur = 15;
         
-        // Gambar pedang (bentuk persegi panjang)
+        // Draw blade (rectangle shape)
         this.ctx.fillStyle = '#00ffff';
         this.ctx.fillRect(0, -this.player.bladeWidth / 2, this.player.bladeLength, this.player.bladeWidth);
         
-        // Tambahkan detail pedang (gagang)
+        // Add blade details (handle)
         this.ctx.fillStyle = '#ffff00';
         this.ctx.fillRect(-10, -this.player.bladeWidth - 2, 10, this.player.bladeWidth * 2 + 4);
         
-        // Kembalikan state context
+        // Restore context state
         this.ctx.restore();
     }
     
@@ -846,12 +846,12 @@ class BladeWarrior {
             const logEntry = document.createElement('div');
             logEntry.classList.add('terminal-line');
             
-            // Tambahkan cursor
+            // Add cursor
             const cursor = document.createElement('span');
             cursor.classList.add('cursor');
             terminalContent.appendChild(cursor);
             
-            // Efek ketikan
+            // Typing effect
             let i = 0;
             const typeWriter = () => {
                 if (i < message.length) {
@@ -861,7 +861,7 @@ class BladeWarrior {
                     i++;
                     setTimeout(typeWriter, delay);
                 } else {
-                    // Hapus cursor dari baris ini dan pindahkan ke baris baru
+                    // Remove cursor from this line and move to new line
                     terminalContent.removeChild(cursor);
                     terminalContent.appendChild(cursor);
                     terminalContent.scrollTop = terminalContent.scrollHeight;
@@ -879,19 +879,19 @@ class BladeWarrior {
     }
     
     verifyScore() {
-        console.log('Game.verifyScore dipanggil - mengalihkan ke global verifyGameScore');
+        console.log('Game.verifyScore called - redirecting to global verifyGameScore');
         
-        // Panggil fungsi verifikasi global
+        // Call global verification function
         if (typeof window.verifyGameScore === 'function') {
             window.verifyGameScore();
         } else {
-            console.error('Error: window.verifyGameScore tidak ditemukan!');
-            alert('Verifikasi tidak dapat dilakukan. Mohon muat ulang halaman.');
+            console.error('Error: window.verifyGameScore not found!');
+            alert('Verification cannot be performed. Please reload the page.');
         }
     }
     
     showStartScreen() {
-        // Pastikan elemen UI ada
+        // Ensure UI elements exist
         this.startScreen = document.getElementById('start-screen');
         this.gameOverScreen = document.getElementById('game-over-screen');
         this.waveNotification = document.getElementById('wave-notification');
@@ -901,17 +901,17 @@ class BladeWarrior {
             return;
         }
         
-        // Tampilkan layar start
+        // Display start screen
         this.startScreen.style.display = 'flex';
         this.gameOverScreen.style.display = 'none';
         
         // Reset game state
         this.gameActive = false;
         
-        // Hapus class game-active dari body
+        // Remove game-active class from body
         document.body.classList.remove('game-active');
         
-        // Update high score jika ada
+        // Update high score if exists
         const highScoreElement = document.getElementById('high-score');
         if (highScoreElement) {
             const highScore = localStorage.getItem('bladeWarriorHighScore') || 0;
@@ -930,12 +930,12 @@ class BladeWarrior {
             }
         }
         
-        // Tampilkan notifikasi wave
+        // Display wave notification
         this.waveNotification.textContent = `WAVE ${this.wave}`;
         this.waveNotification.style.display = 'block';
         this.waveNotification.style.opacity = 1;
         
-        // Animasi fade out
+        // Fade out animation
         setTimeout(() => {
             let opacity = 1;
             const fadeInterval = setInterval(() => {
@@ -949,7 +949,7 @@ class BladeWarrior {
             }, 50);
         }, 2000);
         
-        // Tambahkan log wave baru
+        // Add new wave log
         this.addGameEvent('newWave', { wave: this.wave });
         
         console.log(`Wave ${this.wave} started`);
@@ -980,22 +980,22 @@ class BladeWarrior {
             this.gameData.events = [];
         }
         
-        // Tambahkan timestamp ke event
+        // Add timestamp to event
         const event = {
             type: eventType,
             timestamp: Date.now(),
             ...eventData
         };
         
-        // Tambahkan event ke gameData
+        // Add event to gameData
         this.gameData.events.push(event);
         
         console.log('Game event added:', event);
     }
     
-    // Tambahkan metode untuk memeriksa elemen HTML
+    // Add method to check HTML elements
     checkElements() {
-        // Daftar elemen yang diperlukan
+        // List of required elements
         const requiredElements = [
             'gameCanvas',
             'start-screen',
@@ -1008,7 +1008,7 @@ class BladeWarrior {
             'start-button'
         ];
         
-        // Periksa setiap elemen
+        // Check each element
         let missingElements = [];
         for (const elementId of requiredElements) {
             if (!document.getElementById(elementId)) {
@@ -1016,16 +1016,16 @@ class BladeWarrior {
             }
         }
         
-        // Tampilkan pesan error jika ada elemen yang hilang
+        // Show error message if any elements are missing
         if (missingElements.length > 0) {
             console.error('Missing HTML elements:', missingElements);
-            alert('Beberapa elemen HTML tidak ditemukan. Game mungkin tidak berfungsi dengan benar.');
+            alert('Some HTML elements are missing. Game might not function correctly.');
         }
         
         return missingElements.length === 0;
     }
     
-    // Tambahkan metode debugging
+    // Add debugging method
     debug() {
         console.log('=== BLADE WARRIOR DEBUG INFO ===');
         console.log('Canvas:', this.canvas ? 'Found' : 'Not found');
@@ -1042,14 +1042,14 @@ class BladeWarrior {
         console.log('=== END DEBUG INFO ===');
     }
     
-    // Tambahkan atau perbaiki metode checkBladeCollision
+    // Add or fix checkBladeCollision method
     checkBladeCollision(enemy) {
-        // Hitung ujung pedang
+        // Calculate blade end
         const bladeEndX = this.player.x + Math.cos(this.player.bladeRotation) * this.player.bladeLength;
         const bladeEndY = this.player.y + Math.sin(this.player.bladeRotation) * this.player.bladeLength;
         
-        // Periksa jarak enemy ke segmen garis pedang
-        // Gunakan cek jarak point ke line segment
+        // Check distance from enemy to blade segment
+        // Use distance from point to line segment
         const lineLength = Math.hypot(bladeEndX - this.player.x, bladeEndY - this.player.y);
         
         // Projection of enemy position onto blade line
@@ -1058,14 +1058,14 @@ class BladeWarrior {
                      (enemy.y - this.player.y) * (bladeEndY - this.player.y)) / 
                      (lineLength * lineLength)));
         
-        // Titik terdekat pada pedang ke musuh
+        // Closest point on blade to enemy
         const projectionX = this.player.x + t * (bladeEndX - this.player.x);
         const projectionY = this.player.y + t * (bladeEndY - this.player.y);
         
-        // Jarak antara musuh dan titik terdekat pada pedang
+        // Distance between enemy and closest point on blade
         const distance = Math.hypot(enemy.x - projectionX, enemy.y - projectionY);
         
-        // Tumbukan terjadi jika jaraknya kurang dari radius musuh + lebar pedang/2
+        // Collision occurs if distance is less than enemy size + blade width/2
         return distance < enemy.size + this.player.bladeWidth;
     }
     
@@ -1160,11 +1160,11 @@ class BladeWarrior {
         return true;
     }
     
-    // Tambahkan metode untuk membuat elemen yang hilang
+    // Add method to create missing elements
     createMissingElements() {
         console.log('Attempting to create missing elements...');
         
-        // Cek dan buat modal overlay jika tidak ada
+        // Check and create modal overlay if it doesn't exist
         if (!document.getElementById('modal-overlay')) {
             const modalOverlay = document.createElement('div');
             modalOverlay.id = 'modal-overlay';
@@ -1173,7 +1173,7 @@ class BladeWarrior {
             console.log('Created modal overlay');
         }
         
-        // Cek dan buat proof log jika tidak ada
+        // Check and create proof log if it doesn't exist
         if (!document.getElementById('proof-log')) {
             const proofLog = document.createElement('div');
             proofLog.id = 'proof-log';
@@ -1208,7 +1208,7 @@ class BladeWarrior {
             console.log('Created proof log');
         }
         
-        // Cek dan buat verification details jika tidak ada
+        // Check and create verification details if it doesn't exist
         if (!document.getElementById('verification-details')) {
             const verificationDetails = document.createElement('div');
             verificationDetails.id = 'verification-details';
@@ -1239,7 +1239,7 @@ class BladeWarrior {
         console.log('Finished creating missing elements');
     }
 
-    // Perbaiki metode updateUI untuk memastikan UI selalu terlihat rapi
+    // Fix updateUI method to ensure UI always looks clean
     updateUI() {
         // Update score, wave, and lives display
         const scoreDisplay = document.getElementById('score-display');
@@ -1259,7 +1259,7 @@ class BladeWarrior {
         }
     }
 
-    // Metode untuk animasi counter (untuk skor)
+    // Method for counter animation (for score)
     animateCounter(element, start, end, duration) {
         const range = end - start;
         const increment = end > start ? 1 : -1;
@@ -1270,7 +1270,7 @@ class BladeWarrior {
             current += increment;
             element.textContent = current;
             
-            // Tambahkan efek glow saat angka berubah
+            // Add glow effect when number changes
             element.style.textShadow = '0 0 10px #ff00ff, 0 0 20px #ff00ff';
             setTimeout(() => {
                 element.style.textShadow = '';
@@ -1279,7 +1279,7 @@ class BladeWarrior {
             if (current == end) {
                 clearInterval(timer);
                 
-                // Tambahkan efek final glow
+                // Add final glow effect
                 element.style.textShadow = '0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff';
                 setTimeout(() => {
                     element.style.textShadow = '';
@@ -1288,7 +1288,7 @@ class BladeWarrior {
         }, stepTime);
     }
 
-    // Metode untuk efek shake pada canvas
+    // Method for canvas shake effect
     shakeCanvas(intensity, duration) {
         const gameContainer = document.querySelector('.game-container');
         if (!gameContainer) return;
@@ -1305,23 +1305,23 @@ class BladeWarrior {
             gameContainer.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
         };
         
-        // Shake dengan interval 50ms
+        // Shake with interval 50ms
         const shakeInterval = setInterval(shake, 50);
         
-        // Hentikan shake setelah durasi tertentu
+        // Stop shake after duration
         setTimeout(() => {
             clearInterval(shakeInterval);
             gameContainer.style.transform = `translate(${originalPosition.x}px, ${originalPosition.y}px)`;
         }, duration);
     }
 
-    // Tambahkan metode drawGrid ke dalam class BladeWarrior
+    // Add drawGrid method to class BladeWarrior
     drawGrid() {
-        // Gambar grid untuk background
+        // Draw grid for background
         this.ctx.strokeStyle = 'rgba(255, 0, 255, 0.1)';
         this.ctx.lineWidth = 1;
         
-        // Gambar garis vertikal
+        // Draw vertical lines
         for (let x = 0; x <= this.width; x += 20) {
             this.ctx.beginPath();
             this.ctx.moveTo(x, 0);
@@ -1329,7 +1329,7 @@ class BladeWarrior {
             this.ctx.stroke();
         }
         
-        // Gambar garis horizontal
+        // Draw horizontal lines
         for (let y = 0; y <= this.height; y += 20) {
             this.ctx.beginPath();
             this.ctx.moveTo(0, y);
@@ -1338,11 +1338,11 @@ class BladeWarrior {
         }
     }
 
-    // Tambahkan metode logGameEvent yang hilang
+    // Add missing logGameEvent method
     logGameEvent(eventType, eventData) {
         console.log(`Game event: ${eventType}`, eventData);
         
-        // Tambahkan event ke gameData
+        // Add event to gameData
         if (!this.gameData.events) {
             this.gameData.events = [];
         }
@@ -1354,7 +1354,7 @@ class BladeWarrior {
         });
     }
 
-    // Tambahkan metode updateParticles yang hilang
+    // Add missing updateParticles method
     updateParticles() {
         if (!this.particles) {
             this.particles = [];
@@ -1379,7 +1379,7 @@ class BladeWarrior {
         }
     }
 
-    // Perbarui metode shoot() untuk menembak ke arah kursor
+    // Update shoot() method to shoot in mouse direction
     shoot() {
         if (!this.gameActive) return;
         
@@ -1411,11 +1411,11 @@ class BladeWarrior {
         this.createParticles(this.player.x, this.player.y, 5, '#00ffff', 1, 1);
     }
 
-    // Tambahkan ke function untuk mengirim score ke server (di akhir verifyScore atau buat fungsi baru)
+    // Add function to send score to server (at end of verifyScore or create new function)
     sendScoreToServer(playerName, score, gameHash) {
         const timestamp = Math.floor(Date.now() / 1000);
         
-        // Hanya lakukan di environment non-simulation
+        // Only do this in non-simulation environment
         if (!this.simulationMode) {
             // Show loading state
             const statusElement = document.getElementById('verification-status');
@@ -1459,9 +1459,9 @@ class BladeWarrior {
         }
     }
 
-    // Hard reset semua parameter game termasuk kecepatan
+    // Hard reset all game parameters including speed
     restart() {
-        console.log('Game restart dipanggil dari BladeWarrior');
+        console.log('Game restart called from BladeWarrior');
         
         try {
             // Reset game state
@@ -1472,19 +1472,19 @@ class BladeWarrior {
             this.gameActive = true;
             this.isRunning = false;
             
-            // PERBAIKAN: Reset SEMUA parameter kecepatan ke nilai DEFAULT
-            this.baseEnemySpeed = 2.0; // Reset ke nilai default
-            this.enemySpeedMultiplier = 1.0; // Reset ke nilai default
-            this.enemySpawnRate = 60; // Reset ke nilai default
+            // PERBAIKAN: Reset ALL speed parameters to default values
+            this.baseEnemySpeed = 2.0; // Reset to default value
+            this.enemySpeedMultiplier = 1.0; // Reset to default value
+            this.enemySpawnRate = 60; // Reset to default value
             this.enemySpawnCounter = 0;
             
             console.log('Speed parameters reset: baseSpeed=' + this.baseEnemySpeed + 
                       ', multiplier=' + this.enemySpeedMultiplier);
             
-            // Pastikan nilai awal wave benar-benar 1
+            // Ensure initial wave value is 1
             document.getElementById('wave-display').textContent = '1';
             
-            // Hide game over screen jika ada
+            // Hide game over screen if it exists
             if (this.gameOverScreen) {
                 this.gameOverScreen.style.display = 'none';
             }
@@ -1495,10 +1495,10 @@ class BladeWarrior {
                 gameOverModal.style.display = 'none';
             }
             
-            // Tampilkan canvas dan pastikan visible
+            // Show canvas and ensure it's visible
             this.canvas.style.display = 'block';
             
-            // PERBAIKAN: Set player dengan semua properti yang dibutuhkan
+            // PERBAIKAN: Set player with all required properties
             this.player = {
                 x: this.width / 2,
                 y: this.height - 80,
@@ -1515,7 +1515,7 @@ class BladeWarrior {
                 invulnerableTime: 0
             };
             
-            // Reset arrays dan collections
+            // Reset arrays and collections
             this.enemies = [];
             this.particles = [];
             this.keys = {};
@@ -1523,7 +1523,7 @@ class BladeWarrior {
             // Update UI
             this.updateUI();
             
-            // PENTING: Spawn musuh dengan kecepatan awal yang benar
+            // IMPORTANT: Spawn enemies with correct initial speed
             this.spawnEnemies();
             
             // Update gameState global
@@ -1535,18 +1535,18 @@ class BladeWarrior {
                 });
             }
             
-            console.log('Game berhasil direstart!');
+            console.log('Game successfully restarted!');
             return true;
         } catch (error) {
-            console.error('Error pada restart game:', error);
+            console.error('Error on game restart:', error);
             return false;
         }
     }
 
-    // Perbaikan pada draw method untuk mendukung kedua jenis enemy
+    // Fix draw method to support both enemy types
     draw() {
         if (!this.ctx || !this.canvas) {
-            console.error('Context atau canvas tidak tersedia untuk menggambar!');
+            console.error('Context or canvas not available for drawing!');
             return;
         }
         
@@ -1557,7 +1557,7 @@ class BladeWarrior {
         this.ctx.fillStyle = 'black';
         this.ctx.fillRect(0, 0, this.width, this.height);
         
-        // PERBAIKAN: Tambahkan logging draw untuk debugging
+        // PERBAIKAN: Add draw logging for debugging
         console.log(`Drawing game: player at ${this.player.x},${this.player.y}, enemies: ${this.enemies.length}`);
         
         // Draw player with proper checks
@@ -1598,32 +1598,32 @@ class BladeWarrior {
     }
 }
 
-// Tambahkan fungsi untuk memastikan game dimulai dengan benar
+// Add function to ensure game starts correctly
 function initializeGame() {
     console.log('Initializing game...');
     
     try {
-        // Periksa apakah canvas ada
+        // Check if canvas exists
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) {
             console.error('Canvas element not found!');
-            // Coba buat canvas jika tidak ada
+            // Try to create canvas if it doesn't exist
             createGameCanvas();
             return;
         }
         
-        // Inisialisasi game
+        // Initialize game
         const game = new BladeWarrior('gameCanvas');
         
-        // Pastikan event listener untuk tombol start berfungsi
+        // Ensure start button event listener works
         const startButton = document.getElementById('start-button');
         if (startButton) {
             console.log('Start button found, attaching event listener');
-            // Hapus event listener yang ada
+            // Remove existing event listener
             const newStartButton = startButton.cloneNode(true);
             startButton.parentNode.replaceChild(newStartButton, startButton);
             
-            // Tambahkan event listener baru
+            // Add new event listener
             newStartButton.addEventListener('click', function() {
                 console.log('Start button clicked');
                 if (game) {
@@ -1651,7 +1651,7 @@ function initializeGame() {
     }
 }
 
-// Fungsi untuk membuat canvas jika tidak ada
+// Function to create canvas if it doesn't exist
 function createGameCanvas() {
     console.log('Creating game canvas...');
     const gameContainer = document.querySelector('.game-container');
@@ -1665,15 +1665,15 @@ function createGameCanvas() {
     canvas.width = 800;
     canvas.height = 600;
     
-    // Tambahkan canvas ke container
+    // Add canvas to container
     gameContainer.prepend(canvas);
     console.log('Game canvas created');
     
-    // Coba inisialisasi game lagi
+    // Try to initialize game again
     setTimeout(initializeGame, 100);
 }
 
-// Perbaikan pada metode startGame
+// Fix startGame method
 BladeWarrior.prototype.startGame = function() {
     console.log('Starting game...');
     
@@ -1711,23 +1711,23 @@ BladeWarrior.prototype.startGame = function() {
     console.log('Game started!');
 };
 
-// Pastikan event listener untuk document.DOMContentLoaded berfungsi
+// Ensure event listener for document.DOMContentLoaded works
 document.addEventListener('DOMContentLoaded', function() {
     try {
         console.log('DOM fully loaded - initializing game');
         
-        // Periksa apakah canvas ada
+        // Check if canvas exists
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) {
             console.error('Canvas element not found!');
-            alert('Canvas tidak ditemukan! Game tidak dapat diinisialisasi.');
+            alert('Canvas not found! Game cannot be initialized.');
             return;
         }
         
-        // Inisialisasi game
+        // Initialize game
         const game = new BladeWarrior('gameCanvas');
         
-        // Pastikan event listener untuk tombol start berfungsi
+        // Ensure start button event listener works
         const startButton = document.getElementById('start-button');
         if (startButton) {
             console.log('Start button found, attaching event listener');
@@ -1752,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('Game initialization complete!');
         
-        // Setup event listeners untuk debugging
+        // Setup event listeners for debugging
         window.addEventListener('error', function(e) {
             console.error('Global error caught:', e.error);
         });

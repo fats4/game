@@ -32,18 +32,18 @@ fn main() {
     }
 }
 
-// Tambahkan fungsi untuk verifikasi skor game
+// add function for game score verification
 pub fn verify_game_score(timestamp: u64, player_name: &str, score: u32, game_hash: &str) -> bool {
-    // Implementasi verifikasi skor game menggunakan SP1
-    // Ini adalah contoh sederhana, implementasi sebenarnya akan tergantung pada kebutuhan spesifik
+    // Implement game score verification using SP1
+    // This is a simple example, actual implementation will depend on specific requirements
     
     println!("Verifying game score for player: {}", player_name);
     println!("Score: {}, Timestamp: {}", score, timestamp);
     println!("Game data hash: {}", game_hash);
     
-    // Lakukan verifikasi
+    // Perform verification
     // ...
     
-    // Untuk contoh ini, kita selalu mengembalikan true
+    // For this example, we always return true
     true
 } 

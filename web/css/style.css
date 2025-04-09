@@ -763,7 +763,7 @@ canvas {
     }
 }
 
-/* Scanlines effect */
+/* scanlines effect */
 .game-container::after {
     content: '';
     position: absolute;
@@ -806,7 +806,7 @@ canvas {
     100% { opacity: 1; }
 }
 
-/* Tambahkan efek retro overlay */
+/* add retro overlay effect */
 .retro-overlay {
     position: fixed;
     top: 0;
@@ -834,7 +834,7 @@ canvas {
     100% { background-position: 100px 100px; }
 }
 
-/* Tambahkan styling untuk tombol neon */
+/* add styling for neon button */
 .neon-button {
     background-color: transparent;
     border: 2px solid #ff00ff;
@@ -887,7 +887,7 @@ canvas {
     100% { transform: rotate(45deg) translateX(100%); }
 }
 
-/* Perbaiki styling untuk window buttons */
+/* fix styling for window buttons */
 .window-button {
     background-color: transparent;
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -907,7 +907,7 @@ canvas {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Perbaiki styling untuk terminal */
+/* fix styling for terminal */
 .proof-terminal {
     background-color: #000;
     color: #00ff00;
@@ -963,7 +963,7 @@ canvas {
     line-height: 1.5;
 }
 
-/* Tambahkan efek cursor blinking */
+/* add cursor blinking effect */
 #terminal-content::after {
     content: '|';
     animation: blink 1s infinite;
@@ -975,7 +975,7 @@ canvas {
     50% { opacity: 0; }
 }
 
-/* Perbaiki styling untuk progress bar */
+/* fix styling for progress bar */
 .progress-bar-container {
     height: 20px;
     background-color: #111;

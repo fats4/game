@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use alloy_sol_types::private::FixedBytes;
 
-/// Struktur untuk data publik verifikasi skor game
+/// Structure for game score verification public data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameScorePublicValues {
     pub timestamp: u64,
@@ -11,7 +11,7 @@ pub struct GameScorePublicValues {
     pub verified: u32,
 }
 
-/// ABI encoding untuk GameScorePublicValues
+/// ABI encoding for GameScorePublicValues
 pub mod abi {
     use super::*;
     use alloy_sol_types::{sol, SolType};
@@ -43,9 +43,9 @@ pub mod abi {
     }
 }
 
-/// Verifikasi skor game
+/// Game score verification
 #[cfg(feature = "sp1-zkvm")]
 pub fn verify_game_score(score: u32, max_score: u32) -> bool {
-    // Verifikasi dasar bahwa skor valid (tidak melebihi batas)
+    // Basic verification that score is valid (does not exceed limit)
     score <= max_score
 }

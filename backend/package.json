@@ -1,7 +1,7 @@
 {
-  "name": "sp1-image-generator-backend",
+  "name": "blade-warrior-verification-backend",
   "version": "0.1.0",
-  "description": "SP1 Proof Backend for Image Generator",
+  "description": "SP1 Zero-Knowledge Proof Backend for Blade Warrior Game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -15,7 +15,7 @@
     "multer": "^1.4.5-lts.1",
     "sharp": "^0.32.1"
   },
-  "keywords": [],
+  "keywords": ["game", "verification", "sp1", "zk-proof", "blade-warrior"],
   "author": "",
   "license": "ISC"
 }

@@ -11,27 +11,27 @@ pub const GAME_SCORE_ELF: &[u8] = include_elf!("game_score_program");
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Mode eksekusi program tanpa bukti
+    /// Execute program without generating proof
     #[arg(long)]
     execute: bool,
 
-    /// Mode pembuatan bukti ZK
+    /// Generate ZK proof
     #[arg(long)]
     prove: bool,
 
-    /// Timestamp dari permainan
+    /// Game timestamp
     #[arg(long, default_value = "0")]
     timestamp: u64,
 
-    /// Nama pemain
+    /// Player name
     #[arg(long, default_value = "TestPlayer")]
     player: String,
 
-    /// Skor permainan
+    /// Game score
     #[arg(long, default_value = "0")]
     score: u32,
 
-    /// Hash data permainan
+    /// Game data hash
     #[arg(long, default_value = "0000000000000000000000000000000000000000000000000000000000000000")]
     game_hash: String,
 }
@@ -51,7 +51,7 @@ fn main() {
 
     // Setup prover client
     let client = ProverClient::from_env();
-    let elf = GAME_SCORE_ELF; // Gunakan program skor game
+    let elf = GAME_SCORE_ELF; 
 
     println!("=== GAME SCORE VERIFICATION ===");
     
@@ -59,10 +59,10 @@ fn main() {
     println!("Setting up SP1 program...");
     let (pk, vk) = client.setup(elf);
 
-    // Siapkan input untuk program
+    // Prepare program input
     let mut stdin = SP1Stdin::new();
     
-    // Gunakan timestamp dari argumen atau timestamp saat ini
+    // Use timestamp from argument or current time
     let timestamp = if args.timestamp == 0 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -72,12 +72,12 @@ fn main() {
         args.timestamp
     };
     
-    // Tulis input ke program
+    // Write input to program
     stdin.write(&timestamp);
     stdin.write(&args.player.as_bytes().to_vec());
     stdin.write(&args.score);
     
-    // Decode game hash hex ke bytes
+    // Decode game hash hex to bytes
     let game_hash_bytes = match hex::decode(&args.game_hash) {
         Ok(bytes) => bytes,
         Err(e) => {
@@ -87,7 +87,7 @@ fn main() {
     };
     stdin.write(&game_hash_bytes);
     
-    // Gunakan timestamp saat ini untuk verifikasi
+    // Use current time for verification
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -105,13 +105,13 @@ fn main() {
         };
         println!("Program executed successfully.");
 
-        // Tampilkan hasil verifikasi dengan format yang konsisten
+        // Display verification result with consistent format
         println!("===== GAME SCORE VERIFICATION REPORT =====");
         println!("Public Values: {:?}", public_values);
         println!("Instructions: {}", report.total_instruction_count());
         println!("=========================================");
     } else {
-        // Generate proof dengan output yang lebih bersih
+        // Generate proof with cleaner output
         println!("Generating proof...");
         let proof = match client.prove(&pk, &stdin).run() {
             Ok(proof) => proof,
@@ -122,7 +122,7 @@ fn main() {
         };
         println!("Proof generated successfully!");
         
-        // Verifikasi proof
+        // Verify proof
         println!("Verifying proof...");
         if let Err(e) = client.verify(&proof, &vk) {
             eprintln!("Failed to verify proof: {}", e);
@@ -130,7 +130,7 @@ fn main() {
         }
         println!("Proof verified successfully!");
         
-        // Simpan proof
+        // Save proof
         let proof_path = format!("game_score_proof_{}.bin", args.timestamp);
         if let Err(e) = proof.save(&proof_path) {
             eprintln!("Failed to save proof: {}", e);

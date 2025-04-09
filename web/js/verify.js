@@ -1,45 +1,45 @@
-// Script khusus untuk verifikasi skor game
+// Game score verification script
 (function() {
     console.log('Verify.js loaded');
     
-    // Pastikan verifyGameScore tidak didefinisikan ulang jika sudah ada
+    // Ensure verifyGameScore isn't redefined if it already exists
     if (typeof window.verifyGameScore !== 'function') {
-        // Tetapkan fungsi verifikasi sebagai global
+        // Set verification function as global
         window.verifyGameScore = function() {
-            console.log('Verifikasi skor dipanggil');
+            console.log('Score verification called');
             
-            // Dapatkan data skor dari gameState atau gameInstance
+            // Get score data from gameState or gameInstance
             const gameState = window.gameState || {};
             const gameInstance = window.gameInstance || {};
             
-            // Pilih sumber data yang valid (prioritaskan gameState)
+            // Select valid data source (prioritize gameState)
             const finalScore = gameState.finalScore !== undefined ? gameState.finalScore : 
                               (gameInstance.finalScore !== undefined ? gameInstance.finalScore : 0);
             
             const finalWave = gameState.finalWave !== undefined ? gameState.finalWave : 
                              (gameInstance.finalWave !== undefined ? gameInstance.finalWave : 1);
             
-            // Pastikan game tidak aktif
+            // Ensure game is not active
             const gameActive = gameState.gameActive || (gameInstance.gameActive || false);
             if (gameActive) {
-                console.log('Game masih aktif, tidak bisa verifikasi');
+                console.log('Game still active, cannot verify');
                 return;
             }
             
-            console.log(`Verifikasi skor: ${finalScore}, wave: ${finalWave}`);
+            console.log(`Verifying score: ${finalScore}, wave: ${finalWave}`);
             
-            // Cek apakah skor tersedia
+            // Check if score is available
             if (finalScore === undefined || finalScore === null) {
-                alert('Tidak ada skor yang tersedia untuk diverifikasi!');
+                alert('No score available for verification!');
                 return;
             }
             
-            // Dapatkan nama pemain
+            // Get player name
             const playerNameInput = document.getElementById('player-name');
             const playerName = playerNameInput ? playerNameInput.value.trim() : 'Anonymous';
             
             if (!playerName) {
-                alert('Mohon masukkan nama Anda sebelum memverifikasi skor!');
+                alert('Please enter your name before verifying score!');
                 if (playerNameInput) playerNameInput.focus();
                 return;
             }
@@ -61,76 +61,76 @@
                 gameHash = `${playerName}-${finalScore}-${timestamp}`.split('').map(c => c.charCodeAt(0).toString(16)).join('');
             }
             
-            // Tambahkan padding jika hash terlalu pendek
+            // Add padding if hash is too short
             if (gameHash.length < 64) {
                 gameHash = gameHash.padEnd(64, '0');
             } else if (gameHash.length > 64) {
                 gameHash = gameHash.slice(0, 64);
             }
             
-            // Dapatkan timestamp saat ini
+            // Get current timestamp
             const timestamp = Math.floor(Date.now() / 1000);
             
-            // Tampilkan proof log
+            // Show proof log
             const proofLog = document.getElementById('proof-log');
             if (proofLog) {
                 proofLog.style.display = 'block';
             }
             
-            // Reset terminal content dan progress bar
+            // Reset terminal content and progress bar
             const terminalContent = document.getElementById('terminal-content');
             if (terminalContent) {
                 terminalContent.innerHTML = '';
             }
             
-            // Dapatkan elemen status
+            // Get status element
             const statusElement = document.getElementById('verification-status');
             
-            // PENTING: Gunakan event source untuk mendapatkan log proving secara real-time
+            // IMPORTANT: Use event source to get real-time proving logs
             let logLines = [];
             let evtSource = null;
             
             try {
-                // Tambahkan log awal
-                addLogWithTypewriter('Memulai verifikasi skor Zero-Knowledge...', terminalContent);
+                // Add initial logs
+                addLogWithTypewriter('Starting Zero-Knowledge verification...', terminalContent);
                 addLogWithTypewriter(`Player: ${playerName}`, terminalContent);
                 addLogWithTypewriter(`Score: ${finalScore}`, terminalContent);
                 addLogWithTypewriter(`Wave: ${finalWave}`, terminalContent);
                 addLogWithTypewriter(`Timestamp: ${timestamp}`, terminalContent);
                 addLogWithTypewriter('Hash: ' + gameHash.substring(0, 16) + '...', terminalContent);
                 addLogWithTypewriter('----------------------------', terminalContent);
-                addLogWithTypewriter('Memulai proses ZK proving...', terminalContent);
+                addLogWithTypewriter('Starting ZK proving process...', terminalContent);
                 
-                // Gunakan Server-Sent Events untuk streaming log
+                // Use Server-Sent Events for log streaming
                 evtSource = new EventSource(`/api/verify/log?playerName=${encodeURIComponent(playerName)}&score=${finalScore}&timestamp=${timestamp}`);
                 
                 evtSource.onmessage = function(event) {
                     const data = JSON.parse(event.data);
                     
-                    // Tangani update log
+                    // Handle log updates
                     if (data.log) {
                         addLogWithTypewriter(data.log, terminalContent);
                         logLines.push(data.log);
                     }
                     
-                    // Tangani update progress
+                    // Handle progress updates
                     if (data.progress !== undefined) {
                         updateProgressBar(data.progress);
                     }
                     
-                    // Tangani verifikasi selesai
+                    // Handle verification completion
                     if (data.completed) {
                         evtSource.close();
                         
-                        // Tambahkan log selesai
+                        // add log
                         addLogWithTypewriter('----------------------------', terminalContent);
-                        addLogWithTypewriter(`Verifikasi ${data.success ? 'BERHASIL' : 'GAGAL'}!`, terminalContent);
+                        addLogWithTypewriter(`Verification ${data.success ? 'SUCCESSFUL' : 'FAILED'}!`, terminalContent);
                         
                         // Update status
                         if (statusElement) {
                             statusElement.textContent = data.success 
-                                ? 'Verifikasi berhasil diselesaikan! ✅' 
-                                : 'Verifikasi gagal! ❌';
+                                ? 'Verification completed successfully! ✅' 
+                                : 'Verification failed! ❌';
                             
                             statusElement.className = data.success ? 'status-message success' : 'status-message error';
                         }
@@ -141,17 +141,17 @@
                     console.error('EventSource error:', err);
                     evtSource.close();
                     
-                    // Tambahkan log error
-                    addLogWithTypewriter('Error: Koneksi ke server terputus', terminalContent);
+                    // add log error
+                    addLogWithTypewriter('Error: Connection to server lost', terminalContent);
                     
                     // Update status
                     if (statusElement) {
-                        statusElement.textContent = 'Error: Koneksi ke server terputus';
+                        statusElement.textContent = 'Error: Connection to server lost';
                         statusElement.className = 'status-message error';
                     }
                 };
                 
-                // Kirim data untuk memulai verifikasi
+                // send data to start verification
                 fetch('/api/verify', {
                     method: 'POST',
                     headers: {
@@ -164,13 +164,13 @@
                         gameHash
                     })
                 }).catch(error => {
-                    console.error('Error saat mengirim data verifikasi:', error);
+                    console.error('Error when sending verification data:', error);
                     
                     if (evtSource) {
                         evtSource.close();
                     }
                     
-                    // Tambahkan log error
+                    // add log error
                     addLogWithTypewriter(`Error: ${error.message}`, terminalContent);
                     
                     // Update status
@@ -181,13 +181,13 @@
                 });
                 
             } catch (error) {
-                console.error('Error saat setup verifikasi:', error);
+                console.error('Error when setting up verification:', error);
                 
                 if (evtSource) {
                     evtSource.close();
                 }
                 
-                // Tambahkan log error
+                // add log error
                 addLogWithTypewriter(`Error: ${error.message}`, terminalContent);
                 
                 // Update status
@@ -197,7 +197,7 @@
                 }
             }
             
-            // Fungsi untuk menambahkan log dengan efek typewriter
+            // function to add log with typewriter effect
             function addLogWithTypewriter(message, terminalElement) {
                 if (!terminalElement) return;
                 
@@ -208,7 +208,7 @@
                 terminalElement.scrollTop = terminalElement.scrollHeight;
             }
             
-            // Fungsi untuk update progress bar
+            // function to update progress bar
             function updateProgressBar(percentage) {
                 const progressBar = document.getElementById('proof-progress-bar');
                 const progressText = document.getElementById('progress-percentage');
@@ -224,7 +224,7 @@
         };
     }
     
-    // Setup event listener untuk tombol close log dan restart saat DOM loaded
+    // setup event listener for close log and restart button when DOM loaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', setupButtons);
     } else {
@@ -243,27 +243,27 @@
             });
         }
         
-        // Pastikan tombol restart selalu berfungsi
+        // ensure restart button always works
         const restartButtons = document.querySelectorAll('[data-action="restart"]');
         restartButtons.forEach(button => {
             button.addEventListener('click', function(event) {
                 console.log('Tombol restart diklik langsung');
                 
-                // Tambahkan flag untuk mencegah multiple handling
+                // add flag to prevent multiple handling
                 if (button.getAttribute('data-restart-clicked') === 'true') {
-                    console.log('Restart sudah sedang diproses, abaikan klik duplikat');
+                    console.log('Restart already in progress, ignore duplicate click');
                     return;
                 }
                 
                 button.setAttribute('data-restart-clicked', 'true');
                 
-                // Sembunyikan proof log jika terbuka
+                // hide proof log if opened
                 const proofLog = document.getElementById('proof-log');
                 if (proofLog) {
                     proofLog.style.display = 'none';
                 }
                 
-                // Sembunyikan game over dan modal screens
+                // hide game over and modal screens
                 const gameOverScreen = document.getElementById('game-over-screen');
                 if (gameOverScreen) {
                     gameOverScreen.style.display = 'none';
@@ -274,13 +274,13 @@
                     gameOverModal.style.display = 'none';
                 }
                 
-                // Reset terminal content
+                // reset terminal content
                 const terminalContent = document.getElementById('terminal-content');
                 if (terminalContent) {
                     terminalContent.innerHTML = '';
                 }
                 
-                // Reset progress bar
+                // reset progress bar
                 const progressBar = document.getElementById('proof-progress-bar');
                 if (progressBar) {
                     progressBar.style.width = '0%';
@@ -291,28 +291,28 @@
                     progressText.textContent = '0%';
                 }
                 
-                // Restart game menggunakan gameInstance
+                // restart game using gameInstance
                 if (window.gameInstance && typeof window.gameInstance.restart === 'function') {
                     try {
                         window.gameInstance.restart();
-                        console.log('Game berhasil direstart');
+                        console.log('Game successfully restarted');
                     } catch (error) {
-                        console.error('Error saat restart game:', error);
-                        // Fallback dengan me-reload halaman jika restart gagal
+                        console.error('Error restarting game:', error);
+                        // fallback by reloading the page if restart fails
                         setTimeout(() => {
                             window.location.reload();
                         }, 500);
                     }
                 }
                 
-                // Hapus flag setelah delay
+                // remove flag after delay
                 setTimeout(() => {
                     button.removeAttribute('data-restart-clicked');
                 }, 1000);
                 
-                // Dispatch custom event untuk restart (fallback)
+                // dispatch custom event for restart (fallback)
                 document.dispatchEvent(new CustomEvent('game:restart'));
-            }, { capture: true }); // Gunakan capturing phase
+            }, { capture: true }); // use capturing phase
         });
     }
 })(); 
