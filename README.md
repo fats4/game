@@ -1,18 +1,18 @@
-# SP1 Image Generator
+# Blade Warrior
 
-A zero-knowledge proof application for generating and verifying images using SP1 ZK technology.
+An arcade-style action game with zero-knowledge proof score verification using SP1 ZK technology.
 
 ## Overview
 
-SP1 Image Generator allows users to create AI-generated images with cryptographic proofs that verify the image's authenticity and properties. The application uses SP1, a zero-knowledge proof system developed by Succinct Labs.
+Blade Warrior is a retro arcade game where players control a warrior battling through waves of enemies. What makes it unique is the integration of SP1 zero-knowledge proofs to cryptographically verify game scores, ensuring fairness and preventing cheating.
 
 ## Features
 
-- AI image generation with customizable prompts
-- Zero-knowledge proof generation for image verification
-- Image size and dimension verification
-- Downloadable images with proof certificates
-- Web-based user interface
+- Fast-paced arcade-style gameplay
+- Multiple waves of increasingly difficult enemies
+- Zero-knowledge proof verification for game scores
+- Retro pixel art graphics and sound effects
+- Leaderboard system with cryptographically verified scores
 
 ## Prerequisites
 
@@ -27,8 +27,8 @@ Before you begin, make sure you have the following installed:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/sp1-image-generator.git
-   cd sp1-image-generator
+   git clone https://github.com/username/blade-warrior.git
+   cd blade-warrior
    ```
 
 2. Set up the backend:
@@ -37,9 +37,10 @@ Before you begin, make sure you have the following installed:
    npm install
    ```
 
-3. Create a `.env` file in the backend directory:
+3. Create a `.env` file in the backend directory (optional):
    ```
-   STABILITY_API_KEY=your_stability_ai_api_key
+   PORT=3000
+   SIMULATION_MODE=false
    ```
 
 4. Compile the Rust program:
@@ -54,7 +55,7 @@ Before you begin, make sure you have the following installed:
    cargo build --release
    ```
 
-## Running the Application
+## Running the Game
 
 1. Start the backend server:
    ```bash
@@ -67,27 +68,59 @@ Before you begin, make sure you have the following installed:
    http://localhost:3000
    ```
 
-## Usage
+## How to Play
 
-1. Click "Generate Image" on the main screen
-2. Enter a prompt describing the image you want to create
-3. Select the desired image dimensions
-4. Click "Generate" to create your image
-5. Once generated, you can:
-   - Generate a ZK proof for the image
-   - Download the image
-   - Share the image
+- Use **Arrow Keys** to move your warrior
+- Press **Space** to attack enemies
+- Survive as long as possible and defeat enemies to earn points
+- After game over, you can verify your score using SP1 zero-knowledge proofs
 
 ## Project Structure
 
-- `/backend` - Node.js server for handling API requests
+- `/backend` - Node.js server for handling score verification API
 - `/program` - Rust SP1 program for generating ZK proofs
 - `/script` - Rust scripts for interacting with the SP1 program
 - `/lib` - Shared Rust library code
-- `/web` - Frontend web application
+- `/web` - Frontend web application with the game
+
+## Score Verification
+
+The game uses SP1 zero-knowledge proofs to verify scores. This ensures:
+
+1. Scores cannot be tampered with
+2. Verification is trustless and cryptographically secure
+3. The verification process doesn't reveal gameplay details
 
 ## Development
 
 ### Backend Development
 
-The backend server uses Express.js and handles image generation via the Stability AI API.
+The backend server uses Express.js and communicates with the SP1 verification system:
+
+```bash
+cd backend
+npm install
+node server.js
+```
+
+### Frontend Development
+
+The game is built using HTML5 Canvas and JavaScript. No build process is required - simply edit the files in the `/web` directory.
+
+## Deployment
+
+The game can be deployed to any standard web hosting service or VPS:
+
+1. Clone the repository to your server
+2. Install dependencies and build the Rust components
+3. Start the Node.js server
+4. Optionally set up a reverse proxy with Nginx/Apache for HTTPS
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- SP1 by Succinct Labs for the zero-knowledge proof technology
+- The retro arcade game community for inspiration
