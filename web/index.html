@@ -27,7 +27,7 @@
             <div id="start-screen" class="game-title">
                 <h1>BLADE WARRIOR</h1>
                 <p class="start-instruction">CLICK TO START MISSION</p>
-                <button id="start-button" class="neon-button">START MISSION</button>
+                <button id="start-button" class="neon-button" data-action="start">START MISSION</button>
             </div>
             
             <!-- Game Over Screen -->
@@ -38,8 +38,8 @@
                     <p>WAVE REACHED: <span id="final-wave">1</span></p>
                 </div>
                 <div class="game-over-buttons">
-                    <button id="restart-button" class="neon-button">RESTART MISSION</button>
-                    <button id="submit-score-button" class="neon-button">VERIFY SCORE</button>
+                    <button id="restart-button" class="neon-button" data-action="restart">RESTART MISSION</button>
+                    <button id="verify-score-button" class="neon-button" data-action="verify">VERIFY SCORE</button>
                 </div>
             </div>
             
@@ -52,11 +52,11 @@
         <!-- Game Controls -->
         <div class="game-controls">
             <div class="arcade-buttons">
-                <button class="arcade-button button-share">SHARE</button>
-                <button class="arcade-button button-reset">RESET</button>
-                <button class="arcade-button button-prove">PROVE</button>
-                <button class="arcade-button button-info">INFO</button>
-                <button class="arcade-button button-stats">STATS</button>
+                <button class="arcade-button button-share" data-action="share">SHARE</button>
+                <button class="arcade-button button-reset" data-action="reset">RESET</button>
+                <button class="arcade-button button-prove" data-action="prove">PROVE</button>
+                <button class="arcade-button button-info" data-action="info">INFO</button>
+                <button class="arcade-button button-stats" data-action="stats">STATS</button>
             </div>
         </div>
         
@@ -76,8 +76,9 @@
                 <label for="player-name">AGENT NAME:</label>
                 <input type="text" id="player-name" maxlength="15" placeholder="ENTER NAME">
             </div>
-            <button id="restart-button" class="neon-button">RESTART MISSION</button>
-            <button id="submit-score-button" class="neon-button">VERIFY SCORE</button>
+            <button class="neon-button" data-action="restart">RESTART MISSION</button>
+            <button class="neon-button" data-action="verify">VERIFY SCORE</button>
+            <div id="verification-status" class="status-message"></div>
         </div>
     </div>
     
@@ -85,9 +86,20 @@
     <div id="proof-log" class="proof-log" style="display: none;">
         <div class="proof-log-header">
             <h3>SP1 ZERO-KNOWLEDGE PROOF LOG</h3>
-            <button id="close-log" class="close-button">X</button>
+            <button id="close-log" class="close-button" data-action="close-log">X</button>
         </div>
-        <div id="log-content" class="log-content"></div>
+        <div id="log-content" class="log-content">
+            <div class="terminal">
+                <div class="terminal-header">SP1 ZK-PROOF VERIFICATION</div>
+                <div id="terminal-content" class="terminal-content"></div>
+                <div class="terminal-progress">
+                    <div class="progress-container">
+                        <div id="proof-progress-bar" class="progress-bar"></div>
+                    </div>
+                    <div id="progress-percentage">0%</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Audio elements -->
@@ -96,6 +108,9 @@
     <audio id="hit-sound" src="assets/hit.mp3" preload="auto"></audio>
     <audio id="enemy-death-sound" src="assets/enemy-death.mp3" preload="auto"></audio>
 
+    <!-- Load scripts -->
+    <script src="js/gameState.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/verify.js"></script>
 </body>
 </html>

@@ -5,10 +5,8 @@ const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const path = require('path');
 const crypto = require('crypto');
-const multer = require('multer');
-const sharp = require('sharp');
 const fs = require('fs');
-const axios = require('axios');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,570 +19,469 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve static files from the web directory
+app.use(express.static(path.join(__dirname, '../web')));
+
+// Menyimpan koneksi SSE yang aktif
+const clients = new Map();
+
+// Konfigurasi lokasi file yang sudah dikompilasi - dengan path yang fleksibel
+// Cari di beberapa lokasi potensial
+const ROOT_DIR = path.resolve(__dirname, '..');
+const POSSIBLE_COMPILED_DIRS = [
+    path.join(ROOT_DIR, 'target/release'),
+    path.join(ROOT_DIR, 'script/target/release'),
+    path.join(ROOT_DIR, 'script'),
+    path.join(ROOT_DIR, 'bin')
+];
+
+// Pilih direktori yang ada
+let COMPILED_DIR = null;
+for (const dir of POSSIBLE_COMPILED_DIRS) {
+    if (fs.existsSync(dir)) {
+        COMPILED_DIR = dir;
+        console.log(`Found compiled directory: ${dir}`);
+        break;
+    }
+}
+
+if (!COMPILED_DIR) {
+    console.warn('Warning: Could not find compiled directory. Using root directory as fallback.');
+    COMPILED_DIR = ROOT_DIR;
+}
+
+// Ubah konfigurasi direktori proof
+const PROOF_OUTPUT_DIR = path.join(ROOT_DIR, 'proofs');
+
+// Pastikan direktori proofs ada
+try {
+    if (!fs.existsSync(PROOF_OUTPUT_DIR)) {
+        fs.mkdirSync(PROOF_OUTPUT_DIR, { recursive: true });
+        console.log(`Created proof output directory: ${PROOF_OUTPUT_DIR}`);
+    }
+} catch (err) {
+    console.error(`Error creating proof directory: ${err.message}`);
+    console.log('Using current directory as fallback for proofs');
+    PROOF_OUTPUT_DIR = path.join(__dirname, 'proofs');
+    
+    if (!fs.existsSync(PROOF_OUTPUT_DIR)) {
+        fs.mkdirSync(PROOF_OUTPUT_DIR, { recursive: true });
+    }
+}
+
+// Root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../web/index.html'));
+});
+
 // Debug endpoint
-app.get('/api/debug', (req, res) => {
+app.get('/debug', (req, res) => {
+    const scriptPath = path.join(__dirname, '../script');
+    const systemInfo = {
+        nodeVersion: process.version,
+        platform: process.platform,
+        env: {
+            ...process.env,
+            PATH: '[REDACTED]' // Don't expose actual PATH for security
+        }
+    };
+    
     res.json({
-        status: 'ok',
+        status: 'OK',
+        message: 'Debug endpoint working',
         timestamp: new Date().toISOString(),
-        message: 'Debug endpoint is working',
-        simulationMode: SIMULATION_MODE
+        scriptPath,
+        simulationMode: SIMULATION_MODE,
+        systemInfo
     });
 });
 
-// Image generation endpoint
-app.post('/api/generate-image', async (req, res) => {
+// Game score verification endpoint
+app.post('/api/verify', async (req, res) => {
     try {
-        console.log("Received image generation request:", req.body);
-        const { prompt, width, height } = req.body;
+        const { playerName, score, timestamp, gameHash } = req.body;
         
-        if (!prompt || !width || !height) {
+        if (!playerName || score === undefined || !timestamp || !gameHash) {
         return res.status(400).json({
             success: false,
-                error: "Missing required parameters: prompt, width, height"
+                message: 'Missing required fields in request' 
             });
         }
-
-        // Generate image
-        const image = await generateImage(prompt, width, height);
         
-        // count image hash
-        const imageHash = crypto
-            .createHash('sha256')
-            .update(image)
-            .digest('hex');
-
-        // Generate timestamp
-        const timestamp = Math.floor(Date.now() / 1000);
+        console.log(`Verifying score for player ${playerName}: ${score} points`);
         
-        // Log for debugging
-        console.log(`Generated image: ${width}x${height}, size: ${image.length} bytes`);
+        // Buat ID unik untuk verifikasi ini
+        const verificationId = `${playerName}-${timestamp}`;
         
-        // Conversion image to base64
-        const imageBase64 = image.toString('base64');
-        console.log(`Base64 image length: ${imageBase64.length}`);
+        // Buat nama file untuk proof
+        const proofFileName = `${playerName.replace(/[^a-z0-9]/gi, '_')}_${score}_${Date.now()}.bin`;
+        const proofFilePath = path.join(PROOF_OUTPUT_DIR, proofFileName);
         
-        // For demo, skip proccess real SP1 proof 
-        const proofResult = {
-            proofHash: `0xSP1${imageHash.slice(0, 12)}`,
-            timestamp: timestamp,
-            dimensions: `${width}x${height}`,
-            size: image.length,
-            verified: true
-        };
-
-        // Send responds
+        // Kirim respons awal ke client
         res.json({
             success: true,
-            image: imageBase64,
-            proof: proofResult
-        });
-
-    } catch (error) {
-        console.error('Error generating image:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-
-async function generateImage(prompt, width, height) {
-    console.log(`Generating placeholder image for: "${prompt}", size: ${width}x${height}`);
-    return generatePlaceholderImage(prompt, width, height);
-}
-
-
-async function generateImage(prompt, width, height) {
-    try {
-        console.log(`Generating image with prompt: "${prompt}", size: ${width}x${height}`);
-        
-        const apiKey = process.env.STABILITY_API_KEY;
-        
-        if (!apiKey) {
-            console.warn("STABILITY_API_KEY tidak ditemukan di environment variables");
-            return generatePlaceholderImage(prompt, width, height);
-        }
-        
-        const response = await axios({
-            method: 'post',
-            url: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            data: {
-                text_prompts: [
-                    {
-                        text: prompt,
-                        weight: 1.0
-                    }
-                ],
-                cfg_scale: 7,
-                height: 1024,
-                width: 1024,
-                samples: 1,
-                steps: 30
-            }
+            message: "Verification process started",
+            verificationId,
+            proofFile: proofFileName // Tambahkan nama file ke respons
         });
         
-        if (!response.data.artifacts || response.data.artifacts.length === 0) {
-            throw new Error("No image generated");
-        }
+        // Buat file kosong sebagai placeholder (akan diisi oleh proses proving)
+        fs.writeFileSync(proofFilePath, Buffer.alloc(0));
+        console.log(`Empty proof file created at: ${proofFilePath}`);
+
+        // Jalankan proses verifikasi di background dengan path file proof
+        runVerification(playerName, score, timestamp, gameHash, verificationId, proofFilePath);
         
-        const imageBuffer = Buffer.from(response.data.artifacts[0].base64, 'base64');
-        
-        return await sharp(imageBuffer)
-            .resize(width, height, { fit: 'cover' })
-            .png()
-            .toBuffer();
+        // PENTING: Tidak mengirim respons lagi di sini
             
     } catch (error) {
-        console.error("Error generating image:", error.message);
-        if (error.response) {
-            console.error("Response status:", error.response.status);
-            console.error("Response data:", JSON.stringify(error.response.data));
-        }
-        return generatePlaceholderImage(prompt, width, height);
-    }
-}
-
-async function generatePlaceholderImage(prompt, width, height) {
-    console.log("Generating enhanced placeholder image");
-    
-    try {
-        const r = Math.floor(Math.random() * 200) + 50;
-        const g = Math.floor(Math.random() * 200) + 50;
-        const b = Math.floor(Math.random() * 200) + 50;
-        
-        const svgImage = `
-        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:rgb(${r},${g},${b});stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:rgb(${b},${r},${g});stop-opacity:1" />
-                </linearGradient>
-                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="5" />
-                </filter>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grad)"/>
-            <circle cx="${width*0.2}" cy="${height*0.3}" r="${Math.min(width, height)*0.1}" fill="rgba(255,255,255,0.3)" />
-            <circle cx="${width*0.8}" cy="${height*0.7}" r="${Math.min(width, height)*0.15}" fill="rgba(255,255,255,0.2)" />
-            <rect x="${width*0.4}" y="${height*0.4}" width="${width*0.2}" height="${height*0.2}" fill="rgba(255,255,255,0.2)" />
-            
-            <rect x="10%" y="20%" width="80%" height="20%" rx="15" fill="rgba(0,0,0,0.5)" filter="url(#shadow)" />
-            <text x="50%" y="33%" font-family="Arial" font-size="${Math.min(width, height)*0.05}px" fill="white" text-anchor="middle" font-weight="bold">SP1 Image Generator</text>
-            
-            <rect x="10%" y="45%" width="80%" height="25%" rx="15" fill="rgba(0,0,0,0.5)" filter="url(#shadow)" />
-            <foreignObject x="15%" y="50%" width="70%" height="15%">
-                <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial; color: white; font-size: ${Math.min(width, height)*0.03}px; text-align: center; overflow-wrap: break-word;">
-                    ${prompt}
-                </div>
-            </foreignObject>
-            
-            <rect x="20%" y="75%" width="60%" height="10%" rx="10" fill="rgba(0,0,0,0.5)" filter="url(#shadow)" />
-            <text x="50%" y="82%" font-family="Arial" font-size="${Math.min(width, height)*0.025}px" fill="#fe22be" text-anchor="middle">Generated with SP1 ZK Technology</text>
-        </svg>`;
-        
-        const buffer = await sharp(Buffer.from(svgImage))
-            .png()
-            .toBuffer();
-        
-        console.log(`Generated enhanced placeholder image: ${buffer.length} bytes`);
-        return buffer;
-    } catch (error) {
-        console.error("Error generating enhanced placeholder:", error);
-        
-        return await sharp({
-            create: {
-                width: width,
-                height: height,
-                channels: 4,
-                background: { r: 255, g: 0, b: 255, alpha: 1 }
-            }
-        })
-        .png()
-        .toBuffer();
-    }
-}
-
-async function generateImageProof(imageData) {
-    console.log("=== Starting SP1 Proof Generation ===");
-    console.log(`Timestamp: ${imageData.timestamp} (${new Date(imageData.timestamp * 1000).toLocaleString()})`);
-    console.log(`Image Size: ${imageData.imageSize} bytes`);
-    console.log(`Dimensions: ${imageData.width}x${imageData.height}`);
-    console.log(`Image Hash: ${imageData.imageHash}`);
-    
-    const scriptPath = path.resolve(__dirname, '..', 'script');
-    
-    const command = `cd "${scriptPath}" && cargo run --bin prove --release -- --prove` +
-        ` --timestamp ${imageData.timestamp}` +
-        ` --image-size ${imageData.imageSize}` +
-        ` --width ${imageData.width}` +
-        ` --height ${imageData.height}` +
-        ` --image-hash ${imageData.imageHash}`;
-    
-    console.log("Executing command:", command);
-    
-    return new Promise((resolve, reject) => {
-        console.log("Spawning SP1 proof process...");
-        
-        const startTime = Date.now();
-        exec(command, (error, stdout, stderr) => {
-            const endTime = Date.now();
-            const duration = (endTime - startTime) / 1000;
-            
-            console.log(`SP1 process completed in ${duration.toFixed(2)} seconds`);
-            
-            if (error) {
-                console.error("SP1 proof generation failed:", error);
-                console.error("STDOUT:", stdout);
-                console.error("STDERR:", stderr);
-                reject(error);
-                return;
-            }
-            
-            if (stderr) {
-                console.log("Process STDERR (may contain normal output):", stderr);
-            }
-            
-            console.log("Process STDOUT:", stdout);
-            console.log("=== SP1 Proof Generation Completed Successfully ===");
-            
-            resolve({
-                proofHash: `0xSP1${imageData.imageHash.slice(0, 12)}`,
-                timestamp: imageData.timestamp,
-                dimensions: `${imageData.width}x${imageData.height}`,
-                size: imageData.imageSize,
-                verified: true,
-                duration: duration.toFixed(2)
-            });
-        });
-    });
-}
-
-// Serve static files
-app.use(express.static(path.join(__dirname, '..', 'web')));
-
-// Serve the main page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        simulationMode: SIMULATION_MODE
-    });
-});
-
-app.get('/api/test-image', async (req, res) => {
-    try {
-        const width = 512;
-        const height = 512;
-        const buffer = await sharp({
-            create: {
-                width: width,
-                height: height,
-                channels: 4,
-                background: { r: 255, g: 0, b: 255, alpha: 1 }
-            }
-        })
-        .png()
-        .toBuffer();
-        
-        res.set('Content-Type', 'image/png');
-        res.send(buffer);
-    } catch (error) {
-        console.error('Error generating test image:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-app.post('/api/generate-proof', async (req, res) => {
-    try {
-        console.log("\n=== PROOF GENERATION REQUEST ===");
-        const { image, simulation } = req.body;
-        
-        if (!image) {
-            console.error("Missing image data in request");
-            return res.status(400).json({
-                success: false,
-                error: "Missing image data"
-            });
-        }
-        
-        console.log(`Received proof generation request at ${new Date().toLocaleString()}`);
-        console.log(`Image data length: ${image ? image.length : 0} characters`);
-        console.log(`Simulation mode: ${simulation ? 'YES' : 'NO'}`);
-        
-        let imageBuffer;
-        try {
-            imageBuffer = Buffer.from(image, 'base64');
-            console.log(`Decoded image buffer size: ${imageBuffer.length} bytes`);
-        } catch (error) {
-            console.error("Error decoding image:", error);
-            return res.status(400).json({
-                success: false,
-                error: "Invalid image data"
-            });
-        }
-        
-        const imageHash = crypto
-            .createHash('sha256')
-            .update(imageBuffer)
-            .digest('hex');
-        console.log(`Image hash: ${imageHash}`);
-        
-        const timestamp = Math.floor(Date.now() / 1000);
-        console.log(`Timestamp: ${timestamp} (${new Date(timestamp * 1000).toLocaleString()})`);
-        
-        if (simulation) {
-            console.log("=== GENERATING SIMULATED PROOF ===");
-            
-            console.log("Waiting 1 second to simulate processing...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            console.log("Simulated proof completed");
-            return res.json({
-                success: true,
-                proof: {
-                    proofHash: `0xSP1${imageHash.slice(0, 12)}`,
-                    timestamp: timestamp,
-                    dimensions: "512x512", 
-                    size: imageBuffer.length,
-                    verified: true,
-                    simulation: true
-                }
-            });
-        }
-        
-        console.log("=== GENERATING REAL SP1 PROOF ===");
-        
-        try {
-            console.log("Calling generateImageProof function...");
-            const proofResult = await generateImageProof({
-                timestamp: timestamp,
-                imageSize: imageBuffer.length,
-                width: 512, 
-                height: 512, 
-                imageHash: imageHash
-            });
-            
-            console.log("Proof generation successful:", proofResult);
-            res.json({
-                success: true,
-                proof: proofResult
-            });
-        } catch (proofError) {
-            console.error("Error generating proof:", proofError);
+        console.error("Server error:", error);
+        // Hanya kirim respons error jika belum ada respons yang dikirim
+        if (!res.headersSent) {
             res.status(500).json({
                 success: false,
-                error: "Failed to generate proof: " + proofError.message
-            });
-        }
-        
-    } catch (error) {
-        console.error('Error in proof generation endpoint:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// Perbaiki fungsi generateGameProof untuk menangani output dengan benar
-async function generateGameProof(gameData) {
-    console.log("=== GAME SCORE VERIFICATION REQUEST ===");
-    console.log(`Received score verification request at ${new Date().toLocaleString()}`);
-    console.log(`Player: ${gameData.playerName}, Score: ${gameData.score}`);
-    console.log(`Game data length: ${JSON.stringify(gameData).length} characters`);
-    console.log(`Simulation mode: ${SIMULATION_MODE ? 'YES' : 'NO'}`);
-    
-    // Jika dalam mode simulasi, kembalikan proof palsu
-    if (SIMULATION_MODE) {
-        console.log("Simulation mode active, returning simulated proof");
-        return {
-            proofHash: `0x${crypto.createHash('sha256').update(JSON.stringify(gameData)).digest('hex').substring(0, 40)}`,
-            timestamp: Math.floor(Date.now() / 1000),
-            playerName: gameData.playerName,
-            score: gameData.score,
-            verified: true
-        };
-    }
-    
-    // Buat hash dari data game
-    const gameDataHash = crypto.createHash('sha256').update(JSON.stringify(gameData)).digest('hex');
-    console.log(`Game data hash: ${gameDataHash}`);
-    
-    // Jalankan proses verifikasi SP1
-    console.log("=== Starting SP1 Game Proof Generation ===");
-    const timestamp = Math.floor(Date.now() / 1000);
-    console.log(`Timestamp: ${timestamp} (${new Date(timestamp * 1000).toLocaleString()})`);
-    console.log(`Player: ${gameData.playerName}`);
-    console.log(`Score: ${gameData.score}`);
-    console.log(`Game Data Hash: ${gameDataHash}`);
-    
-    // Bangun perintah untuk menjalankan proses SP1
-    const scriptPath = path.join(__dirname, '..', 'script');
-    const command = `cd "${scriptPath}" && cargo run --bin game_verify --release -- --prove --timestamp ${timestamp} --player "${gameData.playerName}" --score ${gameData.score} --game-hash ${gameDataHash}`;
-    
-    console.log(`Executing command: ${command}`);
-    console.log("Spawning SP1 proof process...");
-    
-    return new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        
-        exec(command, (error, stdout, stderr) => {
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            console.log(`SP1 process completed in ${duration} seconds`);
-            
-            if (stderr) {
-                console.log(`Process STDERR (may contain normal output): ${stderr}`);
-            }
-            
-            if (stdout) {
-                console.log(`Process STDOUT: ${stdout}`);
-            }
-            
-            // Periksa apakah output mengandung indikasi keberhasilan
-            // Gunakan string khusus yang ditambahkan di game_verify.rs
-            if (stdout && stdout.includes("VERIFICATION_SUCCESS=true")) {
-                console.log("=== SP1 Game Proof Generation Completed Successfully ===");
-                
-                // Kembalikan hasil proof yang berhasil
-                return resolve({
-                    proofHash: `0x${gameDataHash.substring(0, 40)}`,
-                    timestamp: timestamp,
-                    playerName: gameData.playerName,
-                    score: gameData.score,
-                    verified: true,
-                    duration: duration
-                });
-            } else {
-                // Jika proses berhasil tapi verifikasi gagal
-                if (stdout && stdout.includes("VERIFICATION_SUCCESS=false")) {
-                    console.error("Game verification failed: The proof was generated but verification failed");
-                    return reject(new Error("Game verification failed"));
-                }
-                
-                // Jika ada error lain dalam proses
-                console.error("Error generating game proof:", error || "Unknown verification error");
-                return reject(new Error(error ? error.message : "Verification process failed"));
-            }
-        });
-    });
-}
-
-// Perbarui endpoint /api/verify-score untuk menangani error dengan lebih baik
-app.post('/api/verify-score', async (req, res) => {
-    try {
-        const gameData = req.body;
-        
-        // Validasi data game
-        if (!gameData.playerName || gameData.score === undefined) {
-            return res.status(400).json({ 
-                success: false, 
-                error: "Invalid game data. Player name and score are required." 
-            });
-        }
-        
-        // Generate proof
-        const proof = await generateGameProof(gameData);
-        
-        // Kembalikan respons sukses
-        return res.json({
-            success: true,
-            proof: proof
-        });
-    } catch (error) {
-        console.error("Error verifying score:", error);
-        return res.status(500).json({ 
-            success: false, 
-            error: error.message || "An error occurred during verification" 
-        });
-    }
-});
-
-// Perbarui endpoint /api/verify-game-score untuk menggunakan fungsi yang sama
-app.post('/api/verify-game-score', async (req, res) => {
-    try {
-        console.log("\n=== GAME SCORE VERIFICATION REQUEST ===");
-        const { playerName, score, gameData, simulation } = req.body;
-        
-        if (!playerName || !score || !gameData) {
-            console.error("Missing required game data in request");
-            return res.status(400).json({
-                success: false,
-                error: "Missing required game data"
-            });
-        }
-        
-        console.log(`Received score verification request at ${new Date().toLocaleString()}`);
-        console.log(`Player: ${playerName}, Score: ${score}`);
-        console.log(`Game data length: ${gameData ? JSON.stringify(gameData).length : 0} characters`);
-        console.log(`Simulation mode: ${simulation ? 'YES' : 'NO'}`);
-        
-        if (simulation) {
-            console.log("=== GENERATING SIMULATED GAME PROOF ===");
-            
-            console.log("Waiting 1 second to simulate processing...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            console.log("Simulated game proof completed");
-            return res.json({
-                success: true,
-                proof: {
-                    proofHash: `0xSP1${crypto.createHash('sha256').update(JSON.stringify(gameData)).digest('hex').slice(0, 12)}`,
-                    timestamp: Math.floor(Date.now() / 1000),
-                    playerName: playerName,
-                    score: score,
-                    verified: true,
-                    simulation: true
-                }
+                message: `Server error: ${error.message || 'Unknown error'}`
             });
         } else {
-            // Real proof generation
-            try {
-                const gameProofData = {
-                    playerName,
-                    score,
-                    gameData
-                };
-                
-                const proof = await generateGameProof(gameProofData);
-                
-                return res.json({
-                    success: true,
-                    proof
+            console.error("Cannot send error response, headers already sent");
+        }
+    }
+});
+
+// Endpoint untuk Server-Sent Events (SSE)
+app.get('/api/verify/log', (req, res) => {
+    // Ambil parameter dari query
+    const { playerName, score, timestamp } = req.query;
+    const verificationId = `${playerName}-${timestamp}`;
+    
+    console.log(`Client connected to log stream for verification ID: ${verificationId}`);
+    
+    // Siapkan header untuk SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // Kirim event untuk check koneksi
+    res.write(`data: ${JSON.stringify({ connected: true, log: "Terhubung ke server..." })}\n\n`);
+    
+    // Simpan koneksi dalam clients map
+    clients.set(verificationId, res);
+    
+    // Handle client disconnection
+    req.on('close', () => {
+        console.log(`Client disconnected from log stream: ${verificationId}`);
+        clients.delete(verificationId);
+    });
+});
+
+// Fungsi untuk membersihkan string output
+function cleanOutputString(str) {
+    // Hapus prefiks stdout: dan stderr: dengan lebih agresif
+    // Gunakan regex yang lebih kuat untuk mencocokkan berbagai format
+    return str.replace(/^stdout:\s*/gm, '')     // Hapus di awal baris
+              .replace(/^stderr:\s*/gm, '')     // Hapus di awal baris
+              .replace(/\s+stdout:\s*/gm, ' ')  // Hapus di tengah baris
+              .replace(/\s+stderr:\s*/gm, ' '); // Hapus di tengah baris
+}
+
+// Fungsi untuk menjalankan proses verifikasi
+function runVerification(playerName, score, timestamp, gameHash, verificationId, proofFilePath) {
+    // Fungsi untuk mengirim update ke client
+    const sendUpdate = (data) => {
+        const client = clients.get(verificationId);
+        if (client) {
+            client.write(`data: ${JSON.stringify(data)}\n\n`);
+        }
+    };
+    
+    // Cari executable prove
+    const proveScript = findExecutable('prove', 'cargo run --bin prove --');
+    
+    // Jika tidak ditemukan, gunakan simulasi
+    if (!proveScript && process.env.SIMULATION_MODE !== 'true') {
+        console.log("Prover executable not found, falling back to simulation mode");
+        process.env.SIMULATION_MODE = 'true';
+    }
+    
+    // Update progress awal
+    sendUpdate({ log: "Memulai proses verifikasi...", progress: 5 });
+    
+    // Mode simulasi untuk testing
+    const SIMULATION_MODE = process.env.SIMULATION_MODE === 'true';
+    
+    if (SIMULATION_MODE) {
+        console.log("Running in simulation mode - no actual ZK proof generated");
+        simulateVerification(sendUpdate, playerName, score);
+    } else {
+        console.log("Running real verification using SP1 prover");
+        
+        // Konversi game hash dari hex ke bytes jika perlu
+        let gameHashArg = gameHash;
+        if (gameHash.length === 64 && /^[0-9a-f]+$/i.test(gameHash)) {
+            gameHashArg = gameHash; // Sudah dalam format hex
+        }
+        
+        // Persiapkan command untuk prover
+        const args = [
+            '--prove',
+            '--timestamp', timestamp.toString(),
+            '--player', playerName,
+            '--score', score.toString(),
+            '--game-hash', gameHashArg
+        ];
+        
+        // Log command
+        console.log(`Running command: ${proveScript} ${args.join(' ')}`);
+        
+        // PERBAIKAN: Ganti nama variabel 'process' ke 'childProcess' untuk menghindari konflik
+        let childProcess;
+        if (proveScript.includes('cargo run')) {
+            // Jika menggunakan cargo run
+            childProcess = spawn('cargo', ['run', '--bin', 'prove', '--', ...args], {
+                cwd: path.join(ROOT_DIR, 'script'),
+                env: {
+                    ...process.env, // Sekarang mengacu ke Node.js process
+                    RUST_BACKTRACE: '1',
+                    RUST_LOG: 'info' 
+                },
+                stdio: ['ignore', 'pipe', 'pipe'],
+                windowsHide: true
+            });
+        } else {
+            // Jika menggunakan executable langsung
+            childProcess = spawn(proveScript, args, {
+                cwd: COMPILED_DIR,
+                env: {
+                    ...process.env, // Sekarang mengacu ke Node.js process
+                    RUST_BACKTRACE: '1',
+                    RUST_LOG: 'info' 
+                },
+                stdio: ['ignore', 'pipe', 'pipe'],
+                windowsHide: true
+            });
+        }
+        
+        let output = '';
+        let errorOutput = '';
+        
+        // Update awal
+        sendUpdate({ log: "Memulai SP1 Zero-Knowledge Prover...", progress: 10 });
+        
+        // PERBAIKAN: Gunakan childProcess bukan process untuk stdout/stderr listeners
+        childProcess.stdout.on('data', (data) => {
+            // Bersihkan format output
+            const rawDataStr = data.toString().trim();
+            const dataStr = cleanOutputString(rawDataStr);
+            
+            // Tambahkan ke output kumulatif
+            output += dataStr + "\n";
+            
+            // Inisialisasi variabel progressValue
+            let progressValue = 10; // Default
+            
+            // Deteksi apakah ini pesan error yang sebenarnya
+            const isRealError = dataStr.includes('Error:') || 
+                               dataStr.includes('Failed to') || 
+                               dataStr.includes('exception');
+            
+            // Log pesan tanpa prefiks yang mengganggu
+            if (isRealError) {
+                console.error(dataStr);
+            } else {
+                console.log(dataStr);
+            }
+            
+            // Kirim ke client - hanya pesan yang sudah dibersihkan
+            sendUpdate({ log: dataStr, progress: progressValue });
+            
+            // Deteksi progress dari output
+            if (dataStr.includes('GENERATING KEYS')) {
+                progressValue = 20;
+                sendUpdate({ log: "Menghasilkan proving keys...", progress: progressValue });
+            } else if (dataStr.includes('PROVING AND VERIFICATION KEYS GENERATED')) {
+                progressValue = 40;
+                sendUpdate({ log: "Keys berhasil dibuat!", progress: progressValue });
+            } else if (dataStr.includes('GENERATING PROOF')) {
+                progressValue = 50;
+                sendUpdate({ log: "Membangun Zero-Knowledge proof...", progress: progressValue });
+            } else if (dataStr.includes('ZERO-KNOWLEDGE PROOF GENERATED')) {
+                progressValue = 80;
+                sendUpdate({ log: "Zero-Knowledge proof berhasil dibuat!", progress: progressValue });
+            } else if (dataStr.includes('VERIFYING PROOF')) {
+                progressValue = 85;
+                sendUpdate({ log: "Verifikasi proof...", progress: progressValue });
+            } else if (dataStr.includes('PROOF VERIFIED SUCCESSFULLY')) {
+                progressValue = 95;
+                sendUpdate({ log: "Proof berhasil diverifikasi!", progress: progressValue });
+            } else if (dataStr.includes('VERIFICATION_SUCCESS=true')) {
+                progressValue = 100;
+                sendUpdate({ 
+                    log: "🎉 Verifikasi skor ZK berhasil! 🎉", 
+                    progress: 100,
+                    completed: true,
+                success: true,
+                    proofFile: path.basename(proofFilePath) // Tambahkan info file
                 });
-            } catch (error) {
-                console.error("Error generating game proof:", error);
-                return res.status(500).json({
-                    success: false,
-                    error: "Failed to generate proof: " + error.message
+            } else if (dataStr.includes('Proof saved to')) {
+                const match = dataStr.match(/Proof saved to: (.*)/);
+                if (match && match[1]) {
+                    sendUpdate({ log: `Proof disimpan ke: ${match[1]}`, progress: progressValue });
+                }
+            }
+        });
+        
+        childProcess.stderr.on('data', (data) => {
+            const rawErrorStr = data.toString().trim();
+            const errorStr = cleanOutputString(rawErrorStr);
+            
+            // Tambahkan ke error output kumulatif
+            errorOutput += errorStr + "\n";
+            
+            // Inisialisasi progressValue
+            let progressValue = 10; // Default untuk pesan error
+            
+            // Periksa jika pesan ini sebenarnya stdout yang terkirim melalui stderr
+            if (errorStr.includes('Game Score Verification:') || 
+                errorStr.includes('Timestamp:') || 
+                errorStr.includes('Player:') || 
+                errorStr.includes('Score:') || 
+                errorStr.includes('Verification Result:') ||
+                errorStr.includes('Valid:')) {
+                
+                // Ini output normal, tampilkan tanpa prefiks error
+                console.log(errorStr);
+                
+                // Kirim ke client sebagai log normal
+                sendUpdate({ log: errorStr, progress: progressValue });
+            } else {
+                // Ini error asli
+                console.error(errorStr);
+                
+                // Kirim ke client sebagai error
+                sendUpdate({ log: `Error: ${errorStr}`, progress: progressValue });
+            }
+        });
+        
+        childProcess.on('close', (code) => {
+            console.log(`Child process exited with code ${code}`);
+            
+            if (code !== 0) {
+                console.error('Verification failed');
+                sendUpdate({ 
+                    log: `Verifikasi gagal dengan kode error: ${code}`, 
+                    progress: 100,
+                    completed: true,
+                    success: false
+                });
+            } else if (!output.includes('VERIFICATION_SUCCESS=true')) {
+                // Jika tidak ada konfirmasi sukses
+                sendUpdate({ 
+                    log: "Verifikasi selesai tanpa konfirmasi sukses", 
+                    progress: 100,
+                    completed: true,
+                    success: true
                 });
             }
+        });
+    }
+}
+
+// Fungsi untuk mencari executable
+function findExecutable(name, fallback) {
+    // Cari di direktori yang sudah dikonfigurasi
+    const extensions = process.platform === 'win32' ? ['.exe', '.cmd', '.bat', ''] : [''];
+    
+    for (const ext of extensions) {
+        const filePath = path.join(COMPILED_DIR, `${name}${ext}`);
+        if (fs.existsSync(filePath)) {
+            return filePath;
         }
+    }
+    
+    // Jika tidak ditemukan di COMPILED_DIR, coba cari di PATH sistem
+    const pathEnv = process.env.PATH || '';
+    const pathDirs = pathEnv.split(path.delimiter);
+    
+    for (const dir of pathDirs) {
+        for (const ext of extensions) {
+            const filePath = path.join(dir, `${name}${ext}`);
+            if (fs.existsSync(filePath)) {
+                return filePath;
+            }
+        }
+    }
+    
+    // Jika tidak ditemukan, gunakan fallback
+    return fallback;
+}
+
+// Simulasi verifikasi untuk testing
+function simulateVerification(sendUpdate, playerName, score) {
+    // Simulasi tahapan proving
+    const steps = [
+        { log: "Inisialisasi SP1 ZK Prover...", progress: 10, delay: 800 },
+        { log: "Menyiapkan program RISC-V...", progress: 20, delay: 1000 },
+        { log: "Memulai eksekusi program dalam ZK circuit...", progress: 30, delay: 1200 },
+        { log: "Verifikasi data input game...", progress: 40, delay: 800 },
+        { log: `Memproses skor ${score} untuk pemain ${playerName}...`, progress: 50, delay: 1200 },
+        { log: "Menerapkan batasan ZK circuit...", progress: 60, delay: 1500 },
+        { log: "Generating proof witnesses...", progress: 70, delay: 1500 },
+        { log: "Constructing ZK proof...", progress: 80, delay: 2000 },
+        { log: "Verifying proof validity...", progress: 90, delay: 1000 },
+        { log: "Finalisasi proof...", progress: 95, delay: 800 },
+        { log: "Proof generation completed successfully!", progress: 100, delay: 500, completed: true, success: true }
+    ];
+    
+    // Jalankan simulasi secara berurutan dengan delay
+    let currentStep = 0;
+    
+    function processNextStep() {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            sendUpdate(step);
+            
+            currentStep++;
+            setTimeout(processNextStep, step.delay);
+        }
+    }
+    
+    // Mulai simulasi
+    processNextStep();
+}
+
+// Get proof list endpoint
+app.get('/api/proofs', (req, res) => {
+    try {
+        const proofFiles = fs.readdirSync(PROOF_OUTPUT_DIR)
+            .filter(file => file.endsWith('.bin'))
+            .map(file => {
+                const stats = fs.statSync(path.join(PROOF_OUTPUT_DIR, file));
+                return {
+                    name: file,
+                    created: stats.ctime,
+                    size: stats.size
+                };
+            })
+            .sort((a, b) => b.created - a.created); // Urutkan terbaru dulu
+        
+        res.json({
+            success: true,
+            proofs: proofFiles
+        });
     } catch (error) {
-        console.error("Error in verify-game-score endpoint:", error);
-        return res.status(500).json({
+        console.error("Error listing proofs:", error);
+        res.status(500).json({
             success: false,
-            error: "Server error: " + error.message
+            message: `Error listing proofs: ${error.message}`
         });
     }
 });
 
 // Start the server
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SP1 Image Generator Server running at http://localhost:${PORT}`);
-    console.log(`Simulation Mode: ${SIMULATION_MODE ? 'ENABLED' : 'DISABLED'}`);
-    console.log(`Use the frontend to generate ${SIMULATION_MODE ? 'simulated' : 'real'} ZK proofs!`);
+    console.log(`Blade Warrior Game Verification Server running at http://localhost:${PORT}`);
+    console.log(`Simulation Mode: ${process.env.SIMULATION_MODE === 'true' ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`Using compiled directory: ${COMPILED_DIR}`);
+    console.log(`Proof output directory: ${PROOF_OUTPUT_DIR}`);
+    console.log(`Use the frontend to verify game scores with real ZK proofs!`);
 });

@@ -1,4 +1,4 @@
 fn main() {
-    // Automatically build the program directory
+    // Build program game - ini akan membuild semua binary di dalamnya
     sp1_build::build_program("../program");
 }

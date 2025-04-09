@@ -1,35 +1,39 @@
-use alloy_sol_types::SolType;
+use sp1_sdk::{SP1Stdin, ProverClient, include_elf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use clap::Parser;
-use image_gen_lib::PublicValuesStruct;
-use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
+use hex;
 
 /// RISC-V ELF file for the Image Generator program.
-pub const IMAGE_GEN_ELF: &[u8] = include_elf!("image_gen_program");
+pub const GAME_VERIFICATION_ELF: &[u8] = include_elf!("game_verification_program");
+pub const GAME_SCORE_ELF: &[u8] = include_elf!("game_score_program");
 
 /// Command line arguments
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 struct Args {
-    #[clap(long)]
+    /// Mode eksekusi program tanpa bukti
+    #[arg(long)]
     execute: bool,
 
-    #[clap(long)]
+    /// Mode pembuatan bukti ZK
+    #[arg(long)]
     prove: bool,
 
-    #[clap(long, default_value = "0")]
-    timestamp: u32,
+    /// Timestamp dari permainan
+    #[arg(long, default_value = "0")]
+    timestamp: u64,
 
-    #[clap(long, default_value = "0")]
-    image_size: u32,
+    /// Nama pemain
+    #[arg(long, default_value = "TestPlayer")]
+    player: String,
 
-    #[clap(long, default_value = "0")]
-    width: u32,
+    /// Skor permainan
+    #[arg(long, default_value = "0")]
+    score: u32,
 
-    #[clap(long, default_value = "0")]
-    height: u32,
-
-    #[clap(long, default_value = "0000000000000000000000000000000000000000000000000000000000000000")]
-    image_hash: String,
+    /// Hash data permainan
+    #[arg(long, default_value = "0000000000000000000000000000000000000000000000000000000000000000")]
+    game_hash: String,
 }
 
 fn main() {
@@ -47,46 +51,94 @@ fn main() {
 
     // Setup prover client
     let client = ProverClient::from_env();
+    let elf = GAME_SCORE_ELF; // Gunakan program skor game
 
-    // Parse image hash
-    let image_hash_bytes: [u8; 32] = hex::decode(&args.image_hash)
-        .expect("Invalid image hash hex string")
-        .try_into()
-        .expect("Invalid image hash length");
+    println!("=== GAME SCORE VERIFICATION ===");
+    
+    // Setup program
+    println!("Setting up SP1 program...");
+    let (pk, vk) = client.setup(elf);
 
-    // Prepare inputs
+    // Siapkan input untuk program
     let mut stdin = SP1Stdin::new();
-    stdin.write(&args.timestamp);
-    stdin.write(&args.image_size);
-    stdin.write(&args.width);
-    stdin.write(&args.height);
-    stdin.write(&image_hash_bytes);
-
+    
+    // Gunakan timestamp dari argumen atau timestamp saat ini
+    let timestamp = if args.timestamp == 0 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    } else {
+        args.timestamp
+    };
+    
+    // Tulis input ke program
+    stdin.write(&timestamp);
+    stdin.write(&args.player.as_bytes().to_vec());
+    stdin.write(&args.score);
+    
+    // Decode game hash hex ke bytes
+    let game_hash_bytes = match hex::decode(&args.game_hash) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("Error decoding game hash: {}", e);
+            std::process::exit(1);
+        }
+    };
+    stdin.write(&game_hash_bytes);
+    
+    // Gunakan timestamp saat ini untuk verifikasi
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    stdin.write(&current_time);
+    
     if args.execute {
         // Run program without generating proof
-        let (output, report) = client.execute(IMAGE_GEN_ELF, &stdin).run().unwrap();
+        let (public_values, report) = match client.execute(elf, &stdin).run() {
+            Ok(result) => result,
+            Err(e) => {
+                println!("Error executing program: {}", e);
+                std::process::exit(1);
+            }
+        };
         println!("Program executed successfully.");
 
-        // Read output
-        let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
-        println!("Image Generation Result:");
-        println!("Timestamp: {}", decoded.timestamp);
-        println!("Image Size: {} bytes", decoded.imageSize);
-        println!("Dimensions: {}x{}", decoded.width, decoded.height);
-        println!("Verification Status: {}", if decoded.verified == 1 { "SUCCESS" } else { "FAILED" });
-        println!("Image Hash: 0x{}", hex::encode(decoded.imageHash.0));
-        println!("Instructions executed: {}", report.total_instruction_count());
+        // Tampilkan hasil verifikasi dengan format yang konsisten
+        println!("===== GAME SCORE VERIFICATION REPORT =====");
+        println!("Public Values: {:?}", public_values);
+        println!("Instructions: {}", report.total_instruction_count());
+        println!("=========================================");
     } else {
-        // Generate and verify proof
-        let (pk, vk) = client.setup(IMAGE_GEN_ELF);
-        let proof = client.prove(&pk, &stdin).run().expect("proof generation failed");
+        // Generate proof dengan output yang lebih bersih
+        println!("Generating proof...");
+        let proof = match client.prove(&pk, &stdin).run() {
+            Ok(proof) => proof,
+            Err(e) => {
+                println!("Failed to generate proof: {}", e);
+                std::process::exit(1);
+            }
+        };
         println!("Proof generated successfully!");
         
-        client.verify(&proof, &vk).expect("proof verification failed");
+        // Verifikasi proof
+        println!("Verifying proof...");
+        if let Err(e) = client.verify(&proof, &vk) {
+            eprintln!("Failed to verify proof: {}", e);
+            std::process::exit(1);
+        }
         println!("Proof verified successfully!");
         
-        let proof_path = "image_gen_proof.bin";
-        proof.save(proof_path).expect("failed to save proof");
+        // Simpan proof
+        let proof_path = format!("game_score_proof_{}.bin", args.timestamp);
+        if let Err(e) = proof.save(&proof_path) {
+            eprintln!("Failed to save proof: {}", e);
+            std::process::exit(1);
+        }
         println!("Proof saved to: {}", proof_path);
+        
+        println!("VERIFICATION_SUCCESS=true");
+        println!("=== VERIFICATION COMPLETED SUCCESSFULLY ===");
     }
 }

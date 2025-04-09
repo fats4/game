@@ -1,5 +1,5 @@
 [package]
-name = "image_gen_script"
+name = "game_verification_script"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,7 +16,6 @@ path = "src/bin/prove.rs"
 name = "vkey"
 path = "src/bin/vkey.rs"
 
-# Tambahkan binary baru untuk main.rs
 [[bin]]
 name = "game_verify"
 path = "src/bin/game_verify.rs"
@@ -24,12 +23,13 @@ path = "src/bin/game_verify.rs"
 [dependencies]
 sp1-sdk = "4.0.0"
 alloy-sol-types = "0.7.7"
-image_gen_lib = { path = "../lib" }
-clap = { version = "4.3.0", features = ["derive"] }
+game_lib = { path = "../lib" }
+clap = { version = "4.4", features = ["derive"] }
 dotenv = "0.15.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 hex = "0.4.3"
+sha2 = "0.10.8"
 
 [build-dependencies]
 sp1-build = "4.0.0"

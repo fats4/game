@@ -597,6 +597,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
+name = "game_lib"
+version = "0.1.0"
+dependencies = [
+ "alloy-sol-types",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "game_verification_program"
+version = "0.1.0"
+dependencies = [
+ "alloy-sol-types",
+ "game_lib",
+ "serde",
+ "sha2",
+ "sp1-zkvm",
+]
+
+[[package]]
 name = "gcd"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -678,23 +698,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest 0.10.7",
-]
-
-[[package]]
-name = "image_gen_lib"
-version = "0.1.0"
-dependencies = [
- "alloy-sol-types",
-]
-
-[[package]]
-name = "image_gen_program"
-version = "0.1.0"
-dependencies = [
- "alloy-sol-types",
- "image_gen_lib",
- "serde",
- "sp1-zkvm",
 ]
 
 [[package]]
